@@ -1,7 +1,7 @@
 # AGENTS.md — working on Dot Habits
 
 Dot Habits is a native Android habit tracker built **only** for Nothing Phone (3) on
-Nothing OS 4.x / Android 16. Read `README.md` → "Product rules" before changing behaviour.
+Nothing OS 4.x / Android 16. Read "Product rules" below before changing behaviour.
 
 ## Build
 
@@ -33,6 +33,19 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - Step sync: WorkManager every 15 min in the background, every minute while the app is resumed. Don't add faster polling.
 - Only use documented SDK/platform APIs; verify against official docs before adding new ones.
 - Don't claim on-device verification that wasn't done.
+
+## Product rules
+
+- Values are stored per day: counts, timer seconds, or steps. N days/week counts **distinct** days (four logs on one day = 1 day).
+- Daily streaks count consecutive scheduled days; rest days never break them and an unmet today is pending.
+  Weekly streaks reset only when a week closes below goal; the creation week is a grace week.
+- Avoid habits succeed while slips ≤ allowance; going over breaks the streak immediately.
+- Hold logs +1 up to the daily target; on timers it starts/pauses; on steps it does nothing.
+- Timers: wall-clock `start`/`end` + monotonic anchor, so no foreground service. Split at midnight. After a reboot
+  (`BOOT_COUNT` changed) a running session needs review and counts only to its last confirmed-alive time.
+- Alarms only for reminders, midnight rollover and session end; use `setWindow` (Phone (3) gave
+  `setAndAllowWhileIdle` a 1-hour window). `SCHEDULE_EXACT_ALARM` optional, never `USE_EXACT_ALARM`.
+- Stats count closed opportunities only (scheduled past days, or finished weeks); today and the current week never count.
 
 ## Architecture
 

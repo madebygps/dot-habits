@@ -2,8 +2,10 @@ package com.madebygps.dothabits.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -15,6 +17,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.madebygps.dothabits.domain.DotFont
 import com.madebygps.dothabits.domain.DotIcons
+import java.util.Locale
 
 object Palette {
     val Black = Color(0xFF000000)
@@ -67,24 +75,46 @@ fun DotTheme(highlight: Color, content: @Composable () -> Unit) {
     }
 }
 
-/** Dot-matrix text accent using the original 3×5 [DotFont]. */
+@Composable
+fun DotScreenTitle(text: String) {
+    DotText(text, modifier = Modifier.semantics(mergeDescendants = true) { heading() }, dot = 4.dp)
+}
+
+internal fun fitsDotText(text: String, cell: Dp, maxWidth: Dp, maxHeight: Dp): Boolean =
+    text.all(DotFont::supports) &&
+        cell * DotFont.width(text).coerceAtLeast(1) <= maxWidth &&
+        cell * DotFont.H <= maxHeight
+
+/** Scalable dot accent with readable text when glyphs or available space cannot support it. */
 @Composable
 fun DotText(text: String, modifier: Modifier = Modifier, dot: Dp = 3.dp, color: Color = Palette.Text) {
-    val chars = text.uppercase()
-    val cols = DotFont.width(chars).coerceAtLeast(1)
-    Canvas(modifier.size(width = dot * cols, height = dot * DotFont.H)) {
-        val cell = size.height / DotFont.H
-        var x0 = 0
-        for (c in chars) {
-            val bits = DotFont.bits(c)
-            for (i in bits.indices) if (bits[i]) {
-                drawCircle(
-                    color,
-                    radius = cell * 0.42f,
-                    center = Offset((x0 + i % DotFont.W + 0.5f) * cell, (i / DotFont.W + 0.5f) * cell),
-                )
+    val fontSize = (dot.value * DotFont.H).sp
+    val scaledCell = with(LocalDensity.current) { fontSize.toDp() / DotFont.H }
+    val chars = text.uppercase(Locale.ROOT)
+    BoxWithConstraints(modifier) {
+        if (!fitsDotText(text, scaledCell, maxWidth, maxHeight)) {
+            Text(text, fontSize = fontSize, color = color)
+        } else {
+            val cols = DotFont.width(chars).coerceAtLeast(1)
+            Canvas(
+                Modifier
+                    .size(width = scaledCell * cols, height = scaledCell * DotFont.H)
+                    .semantics { this.text = AnnotatedString(text) },
+            ) {
+                val cell = size.height / DotFont.H
+                var x0 = 0
+                for (c in chars) {
+                    val bits = DotFont.bits(c)
+                    for (i in bits.indices) if (bits[i]) {
+                        drawCircle(
+                            color,
+                            radius = cell * 0.42f,
+                            center = Offset((x0 + i % DotFont.W + 0.5f) * cell, (i / DotFont.W + 0.5f) * cell),
+                        )
+                    }
+                    x0 += DotFont.W + 1
+                }
             }
-            x0 += DotFont.W + 1
         }
     }
 }

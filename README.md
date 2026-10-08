@@ -136,7 +136,7 @@ The app never invents a value.
 - WorkManager runs every 15 minutes, its minimum (deferrable, only when the battery isn't low), to sync steps and refresh widgets.
   While the app is open it also reads steps every minute, which matches how often Health Connect saves phone steps (at most
   about once a minute). Unchanged totals don't trigger a widget redraw. Health Connect rate-limits background reads more
-  strictly than foreground ones and doesn't publish the numbers, so background reads are kept to one small aggregate per run. Widgets otherwise update
+  strictly than foreground ones and doesn't publish the numbers, so background reads stay small: one daily aggregate per run. Widgets otherwise update
   only when data changes (`updatePeriodMillis = 0`).
 - The Glyph Toy updates once a second while a timer runs, otherwise once a minute, and pushes a frame only when the pixels change. While the screen is visible, the app UI ticks every second.
 
@@ -148,8 +148,11 @@ The app never invents a value.
 - On **Android 14+ with SDK extension level ≥ 20**, Health Connect counts steps *itself* from the phone's
   low-power step counter. No Fitbit, Google Fit or other tracker app is needed. So the older claim that Health Connect never counts steps is out of date.
 - Counting starts only after **some app is granted `READ_STEPS`**. There's **no history from before that grant**.
-- Those steps are attributed to `android`, or to a synthetic per-device package from mid-2026. Dot Habits aggregates
-  daily totals **without a data-origin filter**, so they're always included. Steps from any other source are included too, and Health Connect de-duplicates them.
+- Those steps are attributed to `android`, or to a synthetic per-device package from mid-2026.
+- **Dot Habits counts only the phone's own steps**: data origin `android`, plus this device's synthetic package
+  name from `HealthConnectManager.getCurrentDeviceDataSource()` when SDK extension ≥ 22 (the docs say 11; the SDK's
+  annotations require 22). Other step writers are ignored: a companion app can mirror the phone's count and a wearable
+  overlaps it, which can push Health Connect's merged total too high. Days without phone steps show none.
 
 **What Dot Habits does**
 

@@ -129,6 +129,13 @@ interface HabitDao {
     // Steps cache
     @Query("SELECT * FROM steps_days") fun observeSteps(): Flow<List<StepsDayEntity>>
     @Upsert suspend fun upsertSteps(rows: List<StepsDayEntity>)
+    @Query("DELETE FROM steps_days WHERE epochDay >= :fromEpochDay") suspend fun deleteStepsFrom(fromEpochDay: Long)
+
+    @Transaction
+    suspend fun replaceSteps(fromEpochDay: Long, rows: List<StepsDayEntity>) {
+        deleteStepsFrom(fromEpochDay)
+        upsertSteps(rows)
+    }
 }
 
 @Database(

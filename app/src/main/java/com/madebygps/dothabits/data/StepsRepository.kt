@@ -1,17 +1,23 @@
 package com.madebygps.dothabits.data
 
 import android.content.Context
+import android.health.connect.DeviceDataSource
+import android.health.connect.HealthConnectException
+import android.health.connect.HealthConnectManager
 import android.os.Build
+import android.os.OutcomeReceiver
 import android.os.ext.SdkExtensions
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
+import kotlin.coroutines.resume
 
 enum class HcAvailability { AVAILABLE, UPDATE_REQUIRED, UNAVAILABLE }
 
@@ -34,8 +40,9 @@ data class StepsStatus(
  * On Android 14+ with SDK extension 20+, Health Connect itself records steps from the phone's
  * low-power step counter once *any* app holds READ_STEPS — no Fitbit/Google Fit needed.
  * Recording only begins after that grant, so there is no step history from before it.
- * Aggregates are read without a DataOrigin filter, so on-device steps (attributed to
- * "android" or the June-2026 synthetic package name) are always included.
+ * Only the phone's own steps are read: those attributed to "android" (before the June 2026
+ * update) or to this device's synthetic package name (after it). Other apps that write steps,
+ * such as a companion app mirroring the phone or a wearable, are ignored to avoid double counting.
  * Source: developer.android.com/health-and-fitness/health-connect/features/steps
  */
 class StepsRepository(private val context: Context) {
@@ -74,12 +81,39 @@ class StepsRepository(private val context: Context) {
         )
     }
 
+    /** "android" plus this device's synthetic package name, when the platform exposes it. */
+    private suspend fun phoneOrigins(): Set<DataOrigin> {
+        // The docs list extension 11 for this API; the SDK's own annotations require 22.
+        val spn = if (SdkExtensions.getExtensionVersion(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) >= 22) {
+            runCatching { currentDeviceSpn() }.getOrNull()
+        } else {
+            null
+        }
+        return setOfNotNull(DataOrigin(PHONE_STEPS_ORIGIN), spn?.let(::DataOrigin))
+    }
+
+    @androidx.annotation.RequiresExtension(extension = Build.VERSION_CODES.UPSIDE_DOWN_CAKE, version = 22)
+    private suspend fun currentDeviceSpn(): String? = kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+        val hcm = context.getSystemService(HealthConnectManager::class.java)
+        if (hcm == null) {
+            cont.resume(null)
+            return@suspendCancellableCoroutine
+        }
+        hcm.getCurrentDeviceDataSource(
+            Runnable::run,
+            object : OutcomeReceiver<DeviceDataSource, HealthConnectException> {
+                override fun onResult(result: DeviceDataSource) = cont.resume(result.deviceDataOrigin.packageName)
+                override fun onError(error: HealthConnectException) = cont.resume(null)
+            },
+        )
+    }
+
     /**
-     * Daily totals for the last [days] days including today. Days Health Connect has no data
-     * for are omitted (never invented). Returns empty when not permitted.
+     * Daily totals for the last [days] days including today. Only the phone's own steps count.
+     * Days without phone data are omitted (never invented). Returns null when the read fails.
      */
-    suspend fun readDailySteps(days: Int, zone: ZoneId = ZoneId.systemDefault()): Map<LocalDate, Long> {
-        val client = client() ?: return emptyMap()
+    suspend fun readDailySteps(days: Int, zone: ZoneId = ZoneId.systemDefault()): Map<LocalDate, Long>? {
+        val client = client() ?: return null
         val today = LocalDate.now(zone)
         val start = today.minusDays((days - 1).toLong()).atStartOfDay()
         val end = today.plusDays(1).atStartOfDay()
@@ -89,16 +123,20 @@ class StepsRepository(private val context: Context) {
                     metrics = setOf(StepsRecord.COUNT_TOTAL),
                     timeRangeFilter = TimeRangeFilter.between(start, end),
                     timeRangeSlicer = Period.ofDays(1),
+                    dataOriginFilter = phoneOrigins(),
                 ),
-            ).mapNotNull { group ->
-                group.result[StepsRecord.COUNT_TOTAL]?.let { group.startTime.toLocalDate() to it }
+            ).mapNotNull { g ->
+                g.result[StepsRecord.COUNT_TOTAL]?.let { g.startTime.toLocalDate() to it }
             }.toMap()
         } catch (_: SecurityException) {
-            emptyMap() // permission revoked, or background read not allowed
+            null // permission revoked, or background read not allowed
         } catch (_: IllegalStateException) {
-            emptyMap()
+            null
         } catch (_: android.os.RemoteException) {
-            emptyMap()
+            null
         }
     }
 }
+
+/** Package name Health Connect uses for the phone's own step counter. */
+const val PHONE_STEPS_ORIGIN = "android"

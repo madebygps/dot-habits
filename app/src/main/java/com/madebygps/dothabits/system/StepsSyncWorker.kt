@@ -43,7 +43,8 @@ class StepsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
             if (!hasStepsHabit) return
             val status = app.steps.status()
             if (!status.readGranted) return
-            app.repository.cacheSteps(app.steps.readDailySteps(days))
+            val read = app.steps.readDailySteps(days) ?: return
+            app.repository.cacheSteps(java.time.LocalDate.now().minusDays((days - 1).toLong()), read)
         }
     }
 }

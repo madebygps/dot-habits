@@ -6,6 +6,7 @@ import com.madebygps.dothabits.data.DotDatabase
 import com.madebygps.dothabits.data.HabitRepository
 import com.madebygps.dothabits.data.SettingsStore
 import com.madebygps.dothabits.data.StepsRepository
+import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.system.Notifications
 import com.madebygps.dothabits.system.Refresh
 import com.madebygps.dothabits.system.StepsSyncWorker
@@ -23,6 +24,14 @@ class DotApp : Application() {
     val repository: HabitRepository by lazy {
         HabitRepository(database.dao(), settings, contentResolver).also { repo ->
             repo.onDataChanged = { Refresh.afterDataChange(this) }
+            repo.onSessionsFinished = { ids ->
+                val snap = repo.currentSnapshot()
+                ids.distinct().forEach { id ->
+                    snap.habits.firstOrNull { it.habit.id == id }?.let { t ->
+                        Notifications.sessionFinished(this, t.habit, TimerMath.sessionsDone(t.value, t.habit.sessionSeconds, t.habit.sessions))
+                    }
+                }
+            }
         }
     }
     val steps: StepsRepository by lazy { StepsRepository(this) }
@@ -33,6 +42,7 @@ class DotApp : Application() {
         StepsSyncWorker.schedule(this)
         appScope.launch {
             repository.reconcileAfterBoot()
+            repository.finishElapsedSessions()
             repository.touchAlive()
             Refresh.afterDataChange(this@DotApp)
         }

@@ -43,8 +43,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onResume() = viewModelScope.launch {
         repository.reconcileAfterBoot()
+        repository.finishElapsedSessions()
         repository.touchAlive()
         refreshSteps()
+    }
+
+    /** Foreground step reads while the app is visible; cancelled when it isn't. */
+    private var stepsTicker: kotlinx.coroutines.Job? = null
+
+    fun startStepsTicker() {
+        stepsTicker?.cancel()
+        stepsTicker = viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(60_000L)
+                runCatching { StepsSyncWorker.syncSteps(dot, days = 1) }
+            }
+        }
+    }
+
+    fun stopStepsTicker() {
+        stepsTicker?.cancel()
+        stepsTicker = null
     }
 
     fun refreshSteps() = viewModelScope.launch {

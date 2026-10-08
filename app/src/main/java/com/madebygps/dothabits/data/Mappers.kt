@@ -27,6 +27,7 @@ fun HabitEntity.toDomain() = Habit(
     reminders = reminders.split(',').filter { it.isNotBlank() }.map { LocalTime.parse(it) }.sorted(),
     position = position,
     createdOn = LocalDate.ofEpochDay(createdOnEpochDay),
+    sessions = sessions.coerceAtLeast(1),
 )
 
 fun Habit.toEntity() = HabitEntity(
@@ -42,6 +43,7 @@ fun Habit.toEntity() = HabitEntity(
     reminders = reminders.sorted().joinToString(",") { "%02d:%02d".format(it.hour, it.minute) },
     position = position,
     createdOnEpochDay = createdOn.toEpochDay(),
+    sessions = sessions,
 )
 
 fun EntryEntity.toDomain() = Entry(id, habitId, LocalDate.ofEpochDay(epochDay), amount, Instant.ofEpochMilli(createdAtMs))
@@ -54,4 +56,5 @@ fun TimerSessionEntity.toDomain() = TimerSession(
     state = SessionState.valueOf(state),
     lastAlive = Instant.ofEpochMilli(lastAliveMs),
     bootCount = bootCount,
+    limitSeconds = limitSeconds,
 )

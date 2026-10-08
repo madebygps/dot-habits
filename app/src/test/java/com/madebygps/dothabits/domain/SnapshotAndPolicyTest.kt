@@ -32,10 +32,9 @@ class SnapshotAndPolicyTest {
         entries: List<Entry> = emptyList(),
         sessions: List<TimerSession> = emptyList(),
         steps: Map<LocalDate, Long> = emptyMap(),
+        habits: List<Habit> = listOf(creatine, workout, walk, read, meds, tuesdays),
     ): TodaySnapshot {
-        val histories = HistoryAssembler.assemble(
-            listOf(creatine, workout, walk, read, meds, tuesdays), entries, sessions, steps, today, zone, now,
-        )
+        val histories = HistoryAssembler.assemble(habits, entries, sessions, steps, today, zone, now)
         return SnapshotBuilder.build(histories, today, MONDAY, now)
     }
 
@@ -46,6 +45,7 @@ class SnapshotAndPolicyTest {
         assertEquals(0.5f, m.fraction, 0.001f)
         assertEquals(TodayStatus.IN_PROGRESS, m.status)
         assertEquals("1/2 TODAY", HabitLabels.detail(m))
+        assertEquals("", HabitLabels.caption(m)) // progress is in the ring; no streak yet
     }
 
     @Test fun restDayIsExcludedFromDueCount() {
@@ -60,6 +60,7 @@ class SnapshotAndPolicyTest {
         assertEquals(false, w.hasData)
         assertEquals(0f, w.fraction, 0f)
         assertEquals("NO STEP DATA", HabitLabels.detail(w))
+        assertEquals("NO STEP DATA", HabitLabels.caption(w))
         val withData = snapshot(steps = mapOf(today to 10_250L)).habits.first { it.habit.id == walk.id }
         assertEquals(TodayStatus.DONE, withData.status)
     }
@@ -128,5 +129,59 @@ class SnapshotAndPolicyTest {
 
     @Test fun dotIconsAreWellFormed() {
         assertTrue(DotIcons.validate().isEmpty())
+    }
+
+    @Test fun homeCaptionShowsStreakNotProgress() {
+        val base = snapshot().habits.first { it.habit.id == creatine.id }
+        val active = base.copy(streak = StreakStats(12, 20, StreakUnit.WEEKS), week = 2 to 4)
+        assertEquals("12W STREAK", HabitLabels.caption(active))
+        assertEquals("", HabitLabels.caption(base.copy(streak = StreakStats(0, 34, StreakUnit.DAYS))))
+        assertEquals("", HabitLabels.caption(base.copy(status = TodayStatus.REST, streak = StreakStats(0, 3, StreakUnit.DAYS))))
+        assertEquals("5D STREAK", HabitLabels.caption(base.copy(status = TodayStatus.REST, streak = StreakStats(5, 5, StreakUnit.DAYS))))
+        assertEquals("NEEDS REVIEW", HabitLabels.caption(active.copy(needsReview = true)))
+    }
+
+    @Test fun runningTimerCaptionShowsSessionCountdown() {
+        val r = snapshot().habits.first { it.habit.id == read.id }
+            .copy(value = 23 * 60L, timerRunning = true, streak = StreakStats(4, 4, StreakUnit.DAYS))
+        assertEquals("37:00 LEFT", HabitLabels.caption(r))
+    }
+
+    private val deepWork = Habit(7, "Deep Work", "dot", HabitType.TIMED, 25, sessions = 4, createdOn = created, position = 6)
+
+    @Test fun timedSessionsSplitTheRingAndGoal() {
+        assertEquals(100 * 60L, deepWork.dailyGoalUnits)
+        assertEquals(4, deepWork.ringSegments)
+        assertEquals(0, read.ringSegments)
+        val s = snapshot(listOf(entry(deepWork, today, 50 * 60L)), habits = listOf(deepWork))
+        val d = s.habits.single()
+        assertEquals(0.5f, d.fraction, 0.001f)
+        assertEquals(25 * 60L, d.sessionRemaining)
+        assertEquals("2/4 SESSIONS · 50M", HabitLabels.detail(d))
+        assertEquals(TodayStatus.IN_PROGRESS, d.status)
+    }
+
+    @Test fun activeTimerIsRunningOneElseFirstUnfinishedTimedHabit() {
+        // Nothing running: the first timed habit due and not done (home order).
+        val idle = snapshot(listOf(entry(read, today, 60 * 60L)), habits = listOf(read, deepWork))
+        assertEquals(deepWork.id, idle.activeTimer?.habitId)
+        assertEquals(false, idle.activeTimer?.running)
+        // A running timer always wins.
+        val start = today.atTime(17, 50).atZone(zone).toInstant()
+        val run = TimerSession(1, read.id, start, null, SessionState.RUNNING, start, 1, limitSeconds = 60 * 60L)
+        val running = snapshot(sessions = listOf(run), habits = listOf(read, deepWork))
+        assertEquals(read.id, running.activeTimer?.habitId)
+        assertEquals(50 * 60L, running.activeTimer?.sessionRemaining)
+        // Everything done: no target.
+        val done = snapshot(listOf(entry(read, today, 3600L), entry(deepWork, today, 6000L)), habits = listOf(read, deepWork))
+        assertNull(done.activeTimer)
+    }
+
+    @Test fun expiredRunIsNoLongerRunning() {
+        val start = today.atTime(17, 0).atZone(zone).toInstant()
+        val run = TimerSession(1, deepWork.id, start, null, SessionState.RUNNING, start, 1, limitSeconds = 25 * 60L)
+        val d = snapshot(sessions = listOf(run), habits = listOf(deepWork)).habits.single()
+        assertEquals(false, d.timerRunning)
+        assertEquals(25 * 60L, d.value)
     }
 }

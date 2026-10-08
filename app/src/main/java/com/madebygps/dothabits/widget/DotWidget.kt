@@ -27,6 +27,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
+import androidx.glance.layout.width
 import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
@@ -45,10 +46,18 @@ private val Grey = ColorProvider(Color(0xFF8A8A8A))
  * How six habits are arranged for a given widget size. Square-ish sizes (the default 2×2) use
  * the app's own 2-column × 3-row grid; wide sizes switch to 3×2 or a single row of six.
  */
-internal data class WidgetGrid(val cols: Int, val rows: Int, val ringDp: Float, val labels: Boolean) {
+internal data class WidgetGrid(
+    val cols: Int,
+    val rows: Int,
+    val ringDp: Float,
+    val labels: Boolean,
+    /** Column width: columns are packed and centred rather than spread across the full width. */
+    val cellDp: Float,
+) {
     companion object {
         private const val PADDING_DP = 10f
         private const val LABEL_DP = 14f
+        private const val GAP_DP = 4f
 
         fun forSize(widthDp: Float, heightDp: Float): WidgetGrid {
             val w = widthDp - 2 * PADDING_DP
@@ -62,7 +71,9 @@ internal data class WidgetGrid(val cols: Int, val rows: Int, val ringDp: Float, 
             val cellH = h / rows
             val labels = cellH >= 76f && cellW >= 72f
             val ring = minOf(cellW, cellH - if (labels) LABEL_DP else 0f) * 0.88f
-            return WidgetGrid(cols, rows, ring.coerceAtLeast(16f), labels)
+            val ringDp = ring.coerceAtLeast(16f)
+            val cell = minOf(cellW, ringDp + 2 * GAP_DP + if (labels) 24f else 0f)
+            return WidgetGrid(cols, rows, ringDp, labels, cell)
         }
     }
 }
@@ -105,11 +116,15 @@ class DotWidget : GlanceAppWidget() {
             }
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 for (r in 0 until grid.rows) {
-                    Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         for (c in 0 until grid.cols) {
                             val t = habits.getOrNull(r * grid.cols + c)
                             Column(
-                                modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
+                                modifier = GlanceModifier.width(grid.cellDp.dp).fillMaxHeight(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {

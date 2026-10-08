@@ -32,10 +32,28 @@ object TimerMath {
     }
 
     fun effectiveEnd(session: TimerSession, now: Instant): Instant = when (session.state) {
-        SessionState.RUNNING -> maxOf(now, session.start)
-        SessionState.NEEDS_REVIEW -> maxOf(session.lastAlive, session.start)
+        SessionState.RUNNING -> minOf(maxOf(now, session.start), limitEnd(session))
+        SessionState.NEEDS_REVIEW -> minOf(maxOf(session.lastAlive, session.start), limitEnd(session))
         SessionState.CLOSED -> session.end ?: session.start
     }
+
+    /** The moment a run reaches its session limit (far future when it has none). */
+    fun limitEnd(session: TimerSession): Instant =
+        session.limitSeconds?.let { session.start.plusSeconds(it) } ?: Instant.MAX
+
+    /** A RUNNING run that has reached its limit is finished even before it's persisted as CLOSED. */
+    fun isLive(session: TimerSession, now: Instant): Boolean =
+        session.state == SessionState.RUNNING && now < limitEnd(session)
+
+    /** Seconds left in the current session given today's total, e.g. 25-min sessions at 30 min → 20 min. */
+    fun sessionRemaining(todaySeconds: Long, sessionSeconds: Long): Long {
+        if (sessionSeconds <= 0) return 0
+        return sessionSeconds - todaySeconds.coerceAtLeast(0) % sessionSeconds
+    }
+
+    /** Whole sessions completed today, capped at the daily number of sessions. */
+    fun sessionsDone(todaySeconds: Long, sessionSeconds: Long, sessions: Int): Int =
+        if (sessionSeconds <= 0) 0 else (todaySeconds / sessionSeconds).toInt().coerceAtMost(sessions)
 
     fun dayBounds(date: LocalDate, zone: ZoneId): Pair<Instant, Instant> =
         date.atStartOfDay(zone).toInstant() to date.plusDays(1).atStartOfDay(zone).toInstant()
@@ -66,11 +84,6 @@ object TimerMath {
         return out
     }
 
-    /** When a session started now would reach the remaining goal, or null if already reached. */
-    fun goalReachedAt(alreadySeconds: Long, goalSeconds: Long, now: Instant): Instant? {
-        val remaining = goalSeconds - alreadySeconds
-        return if (remaining > 0) now.plusSeconds(remaining) else null
-    }
 
     fun formatDuration(seconds: Long): String {
         val h = seconds / 3600
@@ -82,9 +95,17 @@ object TimerMath {
         }
     }
 
-    /** Compact clock for the 25×25 Glyph matrix: "37" minutes or "1:05" hours:minutes. */
-    fun formatGlyphClock(seconds: Long): String {
-        val totalMin = seconds / 60
-        return if (totalMin < 100) totalMin.toString() else "${totalMin / 60}:${(totalMin % 60).toString().padStart(2, '0')}"
+    /** "12:05" minutes:seconds (or "1:05:00" with hours) countdown text. */
+    fun formatClock(seconds: Long): String {
+        val s = seconds.coerceAtLeast(0)
+        return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+    }
+
+    /** Glyph countdown: whole minutes rounded up ("25"), then seconds in the final minute ("42"). */
+    /** Glyph countdown: m:ss up to 99:59 (fits the 25-LED width), then 1H40-style hours+minutes. */
+    fun formatGlyphCountdown(seconds: Long): String {
+        val s = seconds.coerceAtLeast(0)
+        return if (s < 100 * 60) "%d:%02d".format(s / 60, s % 60)
+        else "%dH%02d".format(s / 3600, (s % 3600 + 59) / 60 % 60)
     }
 }

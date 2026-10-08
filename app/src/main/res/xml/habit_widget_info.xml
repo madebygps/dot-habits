@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Display-only widget for one habit, picked on placement (reconfigurable). Resizes from 1x1
+  (ring only) to wide (ring + name/streak beside) or large (ring + name/streak below);
+  see SingleLayout in HabitWidget.kt.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="50dp"
+    android:minHeight="50dp"
+    android:minResizeWidth="50dp"
+    android:minResizeHeight="50dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="420dp"
+    android:maxResizeHeight="420dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:configure="com.madebygps.dothabits.widget.HabitWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:previewImage="@drawable/habit_widget_preview"
+    android:description="@string/habit_widget_description" />

@@ -1,7 +1,9 @@
 package com.madebygps.dothabits.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -50,18 +52,51 @@ class TimerMathTest {
         assertEquals(60 * 60L, TimerMath.secondsOnDay(listOf(s), dst, zone, Instant.MAX))
     }
 
-    @Test fun goalReachedAt() {
-        val now = at(10, 0)
-        assertEquals(at(10, 30), TimerMath.goalReachedAt(30 * 60, 60 * 60, now))
-        assertNull(TimerMath.goalReachedAt(60 * 60, 60 * 60, now))
+    @Test fun sessionRemainingAndDone() {
+        val s = 25 * 60L
+        assertEquals(s, TimerMath.sessionRemaining(0, s))
+        assertEquals(20 * 60L, TimerMath.sessionRemaining(30 * 60, s))
+        // Exactly at a boundary the next run is a full session.
+        assertEquals(s, TimerMath.sessionRemaining(50 * 60, s))
+        assertEquals(2, TimerMath.sessionsDone(50 * 60, s, 4))
+        assertEquals(4, TimerMath.sessionsDone(200 * 60, s, 4))
+    }
+
+    @Test fun runStopsItselfAtItsLimit() {
+        val run = TimerSession(1, 1, at(9, 0), null, SessionState.RUNNING, at(9, 0), 1, limitSeconds = 25 * 60L)
+        assertTrue(TimerMath.isLive(run, at(9, 24)))
+        assertFalse(TimerMath.isLive(run, at(9, 25)))
+        // Long after the limit only the session's 25 minutes count, even before it's persisted.
+        assertEquals(25 * 60L, TimerMath.secondsOnDay(listOf(run), day, zone, at(11, 0)))
+        // A reboot-interrupted run is capped by its limit too.
+        val review = run.copy(state = SessionState.NEEDS_REVIEW, lastAlive = at(10, 0))
+        assertEquals(25 * 60L, TimerMath.secondsOnDay(listOf(review), day, zone, at(11, 0)))
+    }
+
+    @Test fun runWithLimitAcrossMidnightSplitsAndStops() {
+        val run = TimerSession(1, 1, at(23, 50), null, SessionState.RUNNING, at(23, 50), 1, limitSeconds = 25 * 60L)
+        val byDay = TimerMath.secondsByDay(listOf(run), zone, at(1, 0, day.plusDays(1)))
+        assertEquals(10 * 60L, byDay[day])
+        assertEquals(15 * 60L, byDay[day.plusDays(1)])
+    }
+
+    @Test fun legacyRunWithoutLimitKeepsCounting() {
+        val run = TimerSession(1, 1, at(9, 0), null, SessionState.RUNNING, at(9, 0), 1)
+        assertTrue(TimerMath.isLive(run, at(23, 0)))
+        assertEquals(14 * 3600L, TimerMath.secondsOnDay(listOf(run), day, zone, at(23, 0)))
     }
 
     @Test fun formatting() {
         assertEquals("45m", TimerMath.formatDuration(45 * 60))
         assertEquals("1h", TimerMath.formatDuration(3600))
         assertEquals("1h 5m", TimerMath.formatDuration(3900))
-        assertEquals("37", TimerMath.formatGlyphClock(37 * 60 + 59))
-        assertEquals("1:45", TimerMath.formatGlyphClock(105 * 60))
+        assertEquals("25:00", TimerMath.formatGlyphCountdown(25 * 60))
+        assertEquals("24:01", TimerMath.formatGlyphCountdown(24 * 60 + 1))
+        assertEquals("0:59", TimerMath.formatGlyphCountdown(59))
+        assertEquals("2H00", TimerMath.formatGlyphCountdown(120 * 60))
+        assertEquals("99:59", TimerMath.formatGlyphCountdown(99 * 60 + 59))
+        assertEquals("12:05", TimerMath.formatClock(12 * 60 + 5))
+        assertEquals("1:00:00", TimerMath.formatClock(3600))
     }
 
     @Test fun wallClockJumpForwardDoesNotAddTime() {

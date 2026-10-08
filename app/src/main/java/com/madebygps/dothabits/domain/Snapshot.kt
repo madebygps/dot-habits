@@ -32,11 +32,37 @@ data class HabitToday(
     /** For STEPS habits: false when no Health Connect reading exists for today. */
     val hasData: Boolean = true,
 ) {
+    /** TIMED only: seconds left in the current session (a full session once the last one ended). */
+    val sessionRemaining: Long get() = TimerMath.sessionRemaining(value, habit.sessionSeconds)
+
     val countsTowardToday: Boolean get() = status != TodayStatus.REST
     val isComplete: Boolean get() = status == TodayStatus.DONE || status == TodayStatus.ON_TRACK
 }
 
-data class ActiveTimer(val habitId: Long, val habitName: String, val todaySeconds: Long, val goalSeconds: Long, val running: Boolean)
+/**
+ * The timer the Glyph Toy shows and its long press starts/pauses: the running timer, otherwise
+ * the timed habit picked on the toy, otherwise the first timed habit due today that isn't done
+ * yet (home-screen order).
+ */
+data class ActiveTimer(
+    val habitId: Long,
+    val habitName: String,
+    val todaySeconds: Long,
+    val sessionSeconds: Long,
+    val sessions: Int,
+    val running: Boolean,
+    /** Seconds left in the current session. */
+    val sessionRemaining: Long,
+    val icon: String = "",
+    /** Timed habits due today and not done, in home order; the toy's hold gesture cycles them. */
+    val choices: List<Long> = listOf(habitId),
+) {
+    /** The habit a hold should switch to, or null when there's nothing else to pick or one is running. */
+    val next: Long? get() = if (running || choices.size < 2) null
+        else choices[(choices.indexOf(habitId) + 1).mod(choices.size)]
+
+    val sessionsDone: Int get() = TimerMath.sessionsDone(todaySeconds, sessionSeconds, sessions)
+}
 
 /**
  * Single source of truth consumed by the app UI, Glance widgets and the Glyph Toy.
@@ -62,12 +88,12 @@ data class HabitHistory(
 
 object SnapshotBuilder {
 
-    fun habitToday(h: HabitHistory, today: LocalDate, firstDay: DayOfWeek, @Suppress("UNUSED_PARAMETER") now: Instant): HabitToday {
+    fun habitToday(h: HabitHistory, today: LocalDate, firstDay: DayOfWeek, now: Instant): HabitToday {
         val habit = h.habit
         val todayValue = h.values[today] ?: 0L
         val week = HabitRules.weekProgress(habit, today, today, firstDay, h.values)
         val streak = HabitRules.streaks(habit, today, firstDay, h.values)
-        val running = h.sessions.any { it.state == SessionState.RUNNING }
+        val running = h.sessions.any { TimerMath.isLive(it, now) }
         val review = h.sessions.any { it.state == SessionState.NEEDS_REVIEW }
 
         val (value, fraction, status) = when {
@@ -108,12 +134,25 @@ object SnapshotBuilder {
         else -> TodayStatus.NOT_STARTED
     }
 
-    fun build(histories: List<HabitHistory>, today: LocalDate, firstDay: DayOfWeek, now: Instant): TodaySnapshot {
+    fun build(
+        histories: List<HabitHistory>,
+        today: LocalDate,
+        firstDay: DayOfWeek,
+        now: Instant,
+        preferredTimer: Long? = null,
+    ): TodaySnapshot {
         val habits = histories.sortedBy { it.habit.position }.map { habitToday(it, today, firstDay, now) }
+        val open = habits.filter { it.habit.type == HabitType.TIMED && it.countsTowardToday && !it.isComplete }
         val timerHabit = habits.firstOrNull { it.timerRunning }
-            ?: habits.firstOrNull { it.needsReview }
+            ?: open.firstOrNull { it.habit.id == preferredTimer }
+            ?: open.firstOrNull()
         val active = timerHabit?.let {
-            ActiveTimer(it.habit.id, it.habit.name, it.value, it.habit.dailyGoalUnits, it.timerRunning)
+            val choices = open.map { o -> o.habit.id }.ifEmpty { listOf(it.habit.id) }
+            ActiveTimer(
+                it.habit.id, it.habit.name, it.value, it.habit.sessionSeconds, it.habit.sessions,
+                it.timerRunning, it.sessionRemaining, it.habit.icon,
+                if (it.habit.id in choices) choices else listOf(it.habit.id) + choices,
+            )
         }
         return TodaySnapshot(today, habits, active)
     }

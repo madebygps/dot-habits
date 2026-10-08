@@ -56,6 +56,9 @@ class HabitRepository(
     /** Invoked after every write so widgets, reminders, notifications and the Glyph refresh. */
     var onDataChanged: (suspend () -> Unit)? = null
 
+    /** Invoked with the habit ids whose timer just stopped at the end of a session. */
+    var onSessionsFinished: (suspend (List<Long>) -> Unit)? = null
+
     private val writeLock = Mutex()
 
     val raw: Flow<RawData> = combine(
@@ -87,8 +90,8 @@ class HabitRepository(
         )
     }
 
-    fun snapshot(data: RawData, now: Instant = Instant.now()): TodaySnapshot =
-        SnapshotBuilder.build(histories(data, now), now.atZone(zone()).toLocalDate(), data.settings.weekStart, now)
+    fun snapshot(data: RawData, now: Instant = Instant.now(), preferredTimer: Long? = null): TodaySnapshot =
+        SnapshotBuilder.build(histories(data, now), now.atZone(zone()).toLocalDate(), data.settings.weekStart, now, preferredTimer)
 
     /** Snapshot that re-evaluates on data change and every [tickMillis] (for running timers / midnight). */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -102,7 +105,7 @@ class HabitRepository(
         }
     }
 
-    suspend fun currentSnapshot(): TodaySnapshot = snapshot(raw.first())
+    suspend fun currentSnapshot(preferredTimer: Long? = null): TodaySnapshot = snapshot(raw.first(), preferredTimer = preferredTimer)
 
     private suspend fun changed() {
         onDataChanged?.invoke()
@@ -149,7 +152,7 @@ class HabitRepository(
             Habit(name = "Creatine", icon = "scoop", type = HabitType.COUNT, dailyTarget = 1, createdOn = today),
             Habit(name = "Workout", icon = "dumbbell", type = HabitType.COUNT, dailyTarget = 1, schedule = Schedule.daysPerWeek(4), createdOn = today),
             Habit(name = "Walk 10,000 steps", icon = "shoe", type = HabitType.STEPS, dailyTarget = 10_000, createdOn = today),
-            Habit(name = "Read 1 hour", icon = "book", type = HabitType.TIMED, dailyTarget = 60, createdOn = today),
+            Habit(name = "Read 1 hour", icon = "book", type = HabitType.TIMED, dailyTarget = 60, sessions = 1, createdOn = today),
             Habit(name = "Journal", icon = "pen", type = HabitType.COUNT, dailyTarget = 1, reminders = listOf(LocalTime.of(21, 0)), createdOn = today),
             Habit(name = "Chonk Meds", icon = "paw", type = HabitType.COUNT, dailyTarget = 2, reminders = listOf(LocalTime.of(8, 0), LocalTime.of(20, 0)), createdOn = today),
         ).forEach { h ->
@@ -196,24 +199,32 @@ class HabitRepository(
     suspend fun manualAmount(habitId: Long, date: LocalDate): Long =
         dao.entriesOn(habitId, date.toEpochDay()).sumOf { it.amount }
 
-    fun notes(habitId: Long) = dao.observeNotes(habitId).map { list -> list.associate { LocalDate.ofEpochDay(it.epochDay) to it.text } }
-
-    suspend fun setNote(habitId: Long, date: LocalDate, text: String) {
-        if (text.isBlank()) dao.deleteNote(habitId, date.toEpochDay())
-        else dao.upsertNote(NoteEntity(habitId, date.toEpochDay(), text.trim()))
-    }
-
     // ---- Timers ---------------------------------------------------------------------------
 
+    /** Close a run now, or at its session limit if that has already passed. */
+    private fun TimerSessionEntity.closedAt(clock: TimerMath.ClockReading): TimerSessionEntity {
+        val r = rebased(clock)
+        val end = minOf(clock.wallMs, r.limitSeconds?.let { r.startMs + it * 1000 } ?: Long.MAX_VALUE)
+        return r.copy(state = SessionState.CLOSED.name, endMs = end, lastAliveMs = clock.wallMs)
+    }
+
+    /**
+     * Starts a run for the rest of the current session (a full session when the previous one
+     * ended). Only one timer runs at a time; any other running timer is paused.
+     */
     suspend fun startTimer(habitId: Long) {
+        val habit = dao.habit(habitId)?.toDomain() ?: return
+        val today = currentSnapshot().habits.firstOrNull { it.habit.id == habitId } ?: return
+        val limit = TimerMath.sessionRemaining(today.value, habit.sessionSeconds)
         writeLock.withLock {
             val clock = clockNow()
             val now = clock.wallMs
-            dao.runningSessions().forEach { dao.updateSession(it.rebased(clock).copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
+            dao.runningSessions().forEach { dao.updateSession(it.closedAt(clock)) }
             dao.insertSession(
                 TimerSessionEntity(
                     habitId = habitId, startMs = now, endMs = null, state = SessionState.RUNNING.name,
                     lastAliveMs = now, bootCount = clock.bootCount, startElapsedMs = clock.elapsedMs,
+                    limitSeconds = limit,
                 ),
             )
         }
@@ -223,11 +234,37 @@ class HabitRepository(
     suspend fun pauseTimer(habitId: Long) {
         writeLock.withLock {
             val clock = clockNow()
-            val now = clock.wallMs
-            dao.runningSessions().filter { it.habitId == habitId }
-                .forEach { dao.updateSession(it.rebased(clock).copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
+            dao.runningSessions().filter { it.habitId == habitId }.forEach { dao.updateSession(it.closedAt(clock)) }
         }
         changed()
+    }
+
+    suspend fun toggleTimer(habitId: Long) {
+        val running = currentSnapshot().habits.firstOrNull { it.habit.id == habitId }?.timerRunning ?: return
+        if (running) pauseTimer(habitId) else startTimer(habitId)
+    }
+
+    /**
+     * Persist runs that reached the end of their session (the alarm normally does this on time;
+     * the app and Glyph Toy also call it so a late alarm never shows a stale running timer).
+     * Returns the habit ids that finished a session.
+     */
+    suspend fun finishElapsedSessions(): List<Long> {
+        val finished = writeLock.withLock {
+            val clock = clockNow()
+            dao.runningSessions().filter { it.bootCount == clock.bootCount }.mapNotNull { s ->
+                val r = s.rebased(clock)
+                val limitAt = r.limitSeconds?.let { r.startMs + it * 1000 } ?: return@mapNotNull null
+                if (clock.wallMs < limitAt) return@mapNotNull null
+                dao.updateSession(r.copy(state = SessionState.CLOSED.name, endMs = limitAt, lastAliveMs = clock.wallMs))
+                s.habitId
+            }
+        }
+        if (finished.isNotEmpty()) {
+            changed()
+            onSessionsFinished?.invoke(finished)
+        }
+        return finished
     }
 
     suspend fun sessions(habitId: Long) = clockNow().let { c -> dao.sessions(habitId).map { it.rebased(c).toDomain() } }
@@ -276,7 +313,8 @@ class HabitRepository(
         val s = dao.session(sessionId) ?: return
         if (end == null) dao.deleteSession(sessionId)
         else {
-            val endMs = end.toEpochMilli().coerceIn(s.startMs, System.currentTimeMillis())
+            val latest = minOf(System.currentTimeMillis(), s.limitSeconds?.let { s.startMs + it * 1000 } ?: Long.MAX_VALUE)
+            val endMs = end.toEpochMilli().coerceIn(s.startMs, maxOf(s.startMs, latest))
             dao.updateSession(s.copy(state = SessionState.CLOSED.name, endMs = endMs))
         }
         changed()
@@ -288,6 +326,9 @@ class HabitRepository(
 
     suspend fun cacheSteps(byDay: Map<LocalDate, Long>) {
         if (byDay.isEmpty()) return
+        // Skip unchanged totals so frequent foreground reads don't redraw widgets for nothing.
+        val cached = raw.first().steps.associate { LocalDate.ofEpochDay(it.epochDay) to it.steps }
+        if (byDay.all { (d, s) -> cached[d] == s }) return
         val now = System.currentTimeMillis()
         dao.upsertSteps(byDay.map { (d, s) -> StepsDayEntity(d.toEpochDay(), s, now) })
         changed()

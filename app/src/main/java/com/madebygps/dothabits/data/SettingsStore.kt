@@ -2,11 +2,9 @@ package com.madebygps.dothabits.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.madebygps.dothabits.glyph.GlyphView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -18,9 +16,6 @@ data class AppSettings(
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     /** ARGB highlight used by the app and widgets. The Glyph stays monochrome. */
     val highlight: Long = HighlightPalette.first().argb,
-    /** Glyph Matrix object brightness 0..255. */
-    val glyphBrightness: Int = 200,
-    val glyphView: GlyphView = GlyphView.TODAY,
 )
 
 data class Highlight(val name: String, val argb: Long)
@@ -40,16 +35,12 @@ class SettingsStore(private val context: Context) {
     private object Keys {
         val weekStart = stringPreferencesKey("week_start")
         val highlight = longPreferencesKey("highlight")
-        val glyphBrightness = intPreferencesKey("glyph_brightness")
-        val glyphView = stringPreferencesKey("glyph_view")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
         AppSettings(
             weekStart = p[Keys.weekStart]?.let(DayOfWeek::valueOf) ?: DayOfWeek.MONDAY,
             highlight = p[Keys.highlight] ?: HighlightPalette.first().argb,
-            glyphBrightness = p[Keys.glyphBrightness] ?: 200,
-            glyphView = p[Keys.glyphView]?.let(GlyphView::valueOf) ?: GlyphView.TODAY,
         )
     }
 
@@ -57,6 +48,4 @@ class SettingsStore(private val context: Context) {
 
     suspend fun setWeekStart(d: DayOfWeek) = context.dataStore.edit { it[Keys.weekStart] = d.name }
     suspend fun setHighlight(argb: Long) = context.dataStore.edit { it[Keys.highlight] = argb }
-    suspend fun setGlyphBrightness(v: Int) = context.dataStore.edit { it[Keys.glyphBrightness] = v.coerceIn(16, 255) }
-    suspend fun setGlyphView(v: GlyphView) = context.dataStore.edit { it[Keys.glyphView] = v.name }
 }

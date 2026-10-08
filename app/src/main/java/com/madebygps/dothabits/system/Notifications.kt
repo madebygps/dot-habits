@@ -19,6 +19,7 @@ object Notifications {
     const val CH_REMINDERS = "reminders"
     const val CH_TIMER = "timer"
     const val CH_REVIEW = "timer_review"
+    const val CH_SESSION_DONE = "timer_session_done"
     private const val ID_TIMER = 1
     private const val ID_REVIEW = 2
     private const val ID_GOAL = 3
@@ -33,6 +34,10 @@ object Notifications {
                     setShowBadge(false)
                 },
                 NotificationChannel(CH_REVIEW, context.getString(R.string.channel_review), NotificationManager.IMPORTANCE_DEFAULT),
+                NotificationChannel(CH_SESSION_DONE, context.getString(R.string.channel_session_done), NotificationManager.IMPORTANCE_HIGH).apply {
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 250, 150, 250, 150, 400)
+                },
             ),
         )
     }
@@ -51,8 +56,8 @@ object Notifications {
         )
 
     /**
-     * Ongoing timer notification. The system Chronometer ticks on its own, so no service or
-     * wake-ups are needed while a timer runs; state lives in Room as timestamps.
+     * Ongoing timer notification counting down the current session. The system Chronometer ticks
+     * on its own, so no service or wake-ups are needed while a timer runs; state lives in Room.
      */
     @Suppress("MissingPermission")
     fun updateTimer(context: Context, snapshot: TodaySnapshot) {
@@ -67,13 +72,19 @@ object Notifications {
                     .putExtra(ActionReceiver.EXTRA_HABIT_ID, running.habit.id),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-            val goal = running.habit.dailyGoalUnits
+            val h = running.habit
+            val goal = TimerMath.formatDuration(h.dailyGoalUnits)
+            val text = if (h.sessions > 1) {
+                val n = (TimerMath.sessionsDone(running.value, h.sessionSeconds, h.sessions) + 1).coerceAtMost(h.sessions)
+                context.getString(R.string.timer_session, n, h.sessions, goal)
+            } else context.getString(R.string.timer_single, goal)
             val n = NotificationCompat.Builder(context, CH_TIMER)
                 .setSmallIcon(R.drawable.ic_stat_dot)
-                .setContentTitle(running.habit.name)
-                .setContentText(context.getString(R.string.timer_goal, TimerMath.formatDuration(goal)))
+                .setContentTitle(h.name)
+                .setContentText(text)
                 .setUsesChronometer(true)
-                .setWhen(System.currentTimeMillis() - running.value * 1000)
+                .setChronometerCountDown(true)
+                .setWhen(System.currentTimeMillis() + running.sessionRemaining * 1000)
                 .setShowWhen(true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -99,15 +110,24 @@ object Notifications {
         )
     }
 
+    /** A timer stopped itself at the end of a session. [done] is whole sessions finished today. */
     @Suppress("MissingPermission")
-    fun timerGoalReached(context: Context, habit: Habit) {
+    fun sessionFinished(context: Context, habit: Habit, done: Int) {
         if (!canPost(context)) return
+        val all = done >= habit.sessions
         NotificationManagerCompat.from(context).notify(
             ID_GOAL,
-            NotificationCompat.Builder(context, CH_REMINDERS)
+            NotificationCompat.Builder(context, CH_SESSION_DONE)
                 .setSmallIcon(R.drawable.ic_stat_dot)
-                .setContentTitle(context.getString(R.string.goal_reached_title, habit.name))
-                .setContentText(context.getString(R.string.goal_reached_text))
+                .setContentTitle(
+                    if (all) context.getString(R.string.goal_done_title, habit.name)
+                    else context.getString(R.string.session_done_title, habit.name, done, habit.sessions),
+                )
+                .setContentText(
+                    if (all) context.getString(R.string.goal_done_text, TimerMath.formatDuration(habit.dailyGoalUnits))
+                    else context.getString(R.string.session_done_text),
+                )
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setContentIntent(openApp(context, habit.id))
                 .setAutoCancel(true)
                 .build(),

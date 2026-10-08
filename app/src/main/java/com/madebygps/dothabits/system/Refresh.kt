@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.widget.DotWidget
+import com.madebygps.dothabits.widget.HabitWidget
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -22,6 +23,7 @@ object Refresh {
             Notifications.updateTimer(app, snapshot)
             Alarms.scheduleAll(app, snapshot)
             DotWidget().updateAll(app)
+            HabitWidget().updateAll(app)
         }.onFailure { Log.w("DotHabits", "refresh failed", it) }
         Unit
     }

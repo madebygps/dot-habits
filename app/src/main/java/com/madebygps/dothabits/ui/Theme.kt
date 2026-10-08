@@ -115,6 +115,8 @@ fun Ring(
     color: Color = LocalHighlight.current,
     dashedTrack: Boolean = false,
     holdProgress: Float = 0f,
+    /** Goal met: draw a solid disc instead of an outline. */
+    filled: Boolean = false,
     content: @Composable () -> Unit = {},
 ) {
     Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -128,12 +130,17 @@ fun Ring(
                 width = stroke,
                 pathEffect = if (dashedTrack) PathEffect.dashPathEffect(floatArrayOf(stroke * 0.6f, stroke * 0.6f)) else null,
             )
-            arcs.track.forEach { (s, sw) -> drawArc(Palette.Track, s, sw, false, topLeft, arcSize, style = trackStroke) }
-            arcs.filled.forEach { (s, sw) -> drawArc(color, s, sw, false, topLeft, arcSize, style = Stroke(stroke)) }
+            if (filled) {
+                drawCircle(color, radius = arcSize.width / 2 + stroke / 2, center = center)
+            } else {
+                arcs.track.forEach { (s, sw) -> drawArc(Palette.Track, s, sw, false, topLeft, arcSize, style = trackStroke) }
+                arcs.filled.forEach { (s, sw) -> drawArc(color, s, sw, false, topLeft, arcSize, style = Stroke(stroke)) }
+            }
             if (holdProgress > 0f) {
                 // Inner hold-to-complete indicator.
                 val r = arcSize.width / 2 - stroke * 1.6f
-                drawCircle(color.copy(alpha = 0.18f * holdProgress), radius = r * holdProgress, center = center)
+                val holdColor = if (filled) Color.Black else color
+                drawCircle(holdColor.copy(alpha = 0.18f * holdProgress), radius = r * holdProgress, center = center)
             }
         }
         content()

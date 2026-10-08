@@ -10,7 +10,10 @@ enum class HabitType {
     /** Manual press-and-hold completions. dailyTarget = completions per day (1 = simple check). */
     COUNT,
 
-    /** Stopwatch sessions that accumulate toward dailyTarget minutes. */
+    /**
+     * Timed sessions: dailyTarget = minutes per session, [Habit.sessions] = sessions per day
+     * (Read 1 × 60 min, Deep Work 4 × 25 min). Each run stops itself at the end of its session.
+     */
     TIMED,
 
     /** Health Connect step count; dailyTarget = steps. */
@@ -56,7 +59,7 @@ data class Habit(
     val name: String,
     val icon: String,
     val type: HabitType,
-    /** Completions (COUNT), minutes (TIMED) or steps (STEPS) per day. For avoid habits: allowed slips per day. */
+    /** Completions (COUNT), minutes per session (TIMED) or steps (STEPS) per day. For avoid habits: allowed slips per day. */
     val dailyTarget: Int,
     val schedule: Schedule = Schedule.Daily,
     /** Avoidance habit: a day succeeds when logged slips stay at or below [dailyTarget]. */
@@ -64,17 +67,23 @@ data class Habit(
     val reminders: List<LocalTime> = emptyList(),
     val position: Int = 0,
     val createdOn: LocalDate,
+    /** TIMED only: sessions per day; the daily goal is sessions × dailyTarget minutes. */
+    val sessions: Int = 1,
 ) {
+    /** TIMED only: length of one session in seconds. */
+    val sessionSeconds: Long get() = dailyTarget.toLong() * 60L
+
     /** Daily goal expressed in stored units (count, seconds, steps). */
     val dailyGoalUnits: Long
         get() = when (type) {
-            HabitType.TIMED -> dailyTarget.toLong() * 60L
+            HabitType.TIMED -> sessionSeconds * sessions.coerceAtLeast(1)
             else -> dailyTarget.toLong()
         }
 
     /** Ring segments for multi-completion habits (e.g. meds twice a day). 0 = continuous ring. */
     val ringSegments: Int
         get() = when {
+            type == HabitType.TIMED -> sessions.takeIf { it in 2..12 } ?: 0
             type != HabitType.COUNT || isNegative -> 0
             schedule.kind == ScheduleKind.TIMES_PER_WEEK -> schedule.perWeek.takeIf { it in 2..14 } ?: 0
             else -> dailyTarget.takeIf { it in 2..12 } ?: 0
@@ -84,7 +93,8 @@ data class Habit(
 enum class SessionState { RUNNING, CLOSED, NEEDS_REVIEW }
 
 /**
- * A stopwatch session for a TIMED habit. Time is stored as wall-clock instants so
+ * One timer run for a TIMED habit. [limitSeconds] is how long this run may last (what was left
+ * of the current session when it started); null for runs from before sessions existed. Time is stored as wall-clock instants so
  * nothing depends on the process staying alive. [lastAlive] is the latest moment the
  * app positively observed the session running; after a reboot the session is put into
  * NEEDS_REVIEW and only time up to [lastAlive] is counted until the user decides.
@@ -97,6 +107,7 @@ data class TimerSession(
     val state: SessionState,
     val lastAlive: Instant,
     val bootCount: Int,
+    val limitSeconds: Long? = null,
 )
 
 /** A manual log (completion, slip, or backfilled amount) on a given day. */

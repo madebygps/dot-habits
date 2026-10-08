@@ -4,6 +4,7 @@ import androidx.room.AutoMigration
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.DeleteTable
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -14,6 +15,7 @@ import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import androidx.room.migration.AutoMigrationSpec
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "habits")
@@ -32,6 +34,8 @@ data class HabitEntity(
     val reminders: String,
     val position: Int,
     val createdOnEpochDay: Long,
+    /** TIMED: sessions per day (dailyTarget is minutes per session). */
+    @ColumnInfo(defaultValue = "1") val sessions: Int = 1,
 )
 
 @Entity(
@@ -62,6 +66,8 @@ data class TimerSessionEntity(
     val bootCount: Int,
     /** SystemClock.elapsedRealtime() at start; monotonic, valid only while [bootCount] matches. */
     val startElapsedMs: Long? = null,
+    /** Seconds this run may last before it stops itself (rest of the current session). */
+    val limitSeconds: Long? = null,
 )
 
 /** Cached Health Connect daily step totals so widgets/Glyph can render without HC access. */
@@ -70,17 +76,6 @@ data class StepsDayEntity(
     @PrimaryKey val epochDay: Long,
     val steps: Long,
     val fetchedAtMs: Long,
-)
-
-@Entity(
-    tableName = "notes",
-    primaryKeys = ["habitId", "epochDay"],
-    foreignKeys = [ForeignKey(HabitEntity::class, ["id"], ["habitId"], onDelete = ForeignKey.CASCADE)],
-)
-data class NoteEntity(
-    val habitId: Long,
-    val epochDay: Long,
-    @ColumnInfo(name = "text") val text: String,
 )
 
 @Dao
@@ -134,19 +129,18 @@ interface HabitDao {
     // Steps cache
     @Query("SELECT * FROM steps_days") fun observeSteps(): Flow<List<StepsDayEntity>>
     @Upsert suspend fun upsertSteps(rows: List<StepsDayEntity>)
-
-    // Notes
-    @Query("SELECT * FROM notes WHERE habitId = :habitId ORDER BY epochDay DESC") fun observeNotes(habitId: Long): Flow<List<NoteEntity>>
-    @Upsert suspend fun upsertNote(n: NoteEntity)
-    @Query("DELETE FROM notes WHERE habitId = :habitId AND epochDay = :day") suspend fun deleteNote(habitId: Long, day: Long)
 }
 
 @Database(
-    entities = [HabitEntity::class, EntryEntity::class, TimerSessionEntity::class, StepsDayEntity::class, NoteEntity::class],
-    version = 2,
+    entities = [HabitEntity::class, EntryEntity::class, TimerSessionEntity::class, StepsDayEntity::class],
+    version = 4,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3, spec = DotDatabase.DropNotes::class), AutoMigration(from = 3, to = 4)],
 )
 abstract class DotDatabase : RoomDatabase() {
     abstract fun dao(): HabitDao
+
+    /** Daily notes were removed; v3 drops the table. */
+    @DeleteTable(tableName = "notes")
+    class DropNotes : AutoMigrationSpec
 }

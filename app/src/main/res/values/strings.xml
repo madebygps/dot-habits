@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Dot Habits</string>
     <string name="channel_reminders">Habit reminders</string>
     <string name="channel_timer">Running timer</string>
     <string name="channel_review">Timer needs review</string>
-    <string name="timer_goal">Goal %1$s</string>
+    <string name="channel_session_done">Timer session finished</string>
+    <string name="timer_session">Session %1$d of %2$d · goal %3$s</string>
+    <string name="timer_single">Goal %1$s</string>
     <string name="pause">Pause</string>
     <string name="review_title">Timer interrupted by restart</string>
     <string name="review_text">%1$s: the phone restarted while timing. Choose how much time to keep.</string>
-    <string name="goal_reached_title">%1$s done</string>
-    <string name="goal_reached_text">Daily goal reached. The timer keeps running until you pause it.</string>
+    <string name="session_done_title" tools:ignore="PluralsCandidate">%1$s · session %2$d of %3$d done</string>
+    <string name="session_done_text">Timer stopped. Start the next session when you\'re ready.</string>
+    <string name="goal_done_title">%1$s done for today</string>
+    <string name="goal_done_text">All %1$s logged.</string>
     <string name="reminder_text">Still to do today</string>
     <string name="toy_name">Dot Habits</string>
-    <string name="toy_summary">Today\'s habit progress. Long-press to switch to the active timer.</string>
+    <string name="toy_summary">Timers for your timed habits. Long-press to start or pause.</string>
     <string name="widget_label">Dot Habits</string>
+    <string name="habit_widget_label">Dot Habits · One habit</string>
+    <string name="habit_widget_description">One habit\'s ring. Pick the habit, any size. Display only, tap to open.</string>
     <string name="widget_description">Today\'s habit rings. Display only, tap to open.</string>
 </resources>

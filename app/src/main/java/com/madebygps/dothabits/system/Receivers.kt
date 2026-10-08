@@ -10,7 +10,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 
-/** Handles reminder, midnight and timer-goal alarms. */
+/** Handles reminder, midnight and end-of-session alarms. */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.dotApp
@@ -27,11 +27,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         val time = if (scheduled > 0) Instant.ofEpochMilli(scheduled).atZone(zone).toLocalTime() else LocalTime.now(zone)
                         ReminderPlanner.due(snap, time).forEach { Notifications.reminder(context, it) }
                     }
-                    ACTION_TIMER_GOAL -> {
-                        val id = intent.getLongExtra(EXTRA_TIME, 0L)
-                        snap.habits.firstOrNull { it.habit.id == id && it.timerRunning && it.value >= it.habit.dailyGoalUnits }
-                            ?.let { Notifications.timerGoalReached(context, it.habit) }
-                    }
+                    ACTION_TIMER_GOAL -> repo.finishElapsedSessions()
                     ACTION_MIDNIGHT -> Unit
                 }
                 Refresh.afterDataChange(context)

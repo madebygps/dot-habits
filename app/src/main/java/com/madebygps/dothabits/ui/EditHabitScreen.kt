@@ -53,6 +53,7 @@ import com.madebygps.dothabits.domain.Habit
 import com.madebygps.dothabits.domain.HabitType
 import com.madebygps.dothabits.domain.Schedule
 import com.madebygps.dothabits.domain.ScheduleKind
+import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.system.Notifications
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -159,7 +160,15 @@ fun EditHabitScreen(vm: MainViewModel, habitId: Long, onDone: () -> Unit, onDele
                 } else if (draft.schedule.kind != ScheduleKind.TIMES_PER_WEEK) {
                     Stepper("Times per day", draft.dailyTarget.toLong(), 1, 1, 12) { draft = draft.copy(dailyTarget = it.toInt()) }
                 }
-                HabitType.TIMED -> Stepper("Minutes per day", draft.dailyTarget.toLong(), 5, 5, 600) { draft = draft.copy(dailyTarget = it.toInt()) }
+                HabitType.TIMED -> {
+                    Stepper("Sessions per day", draft.sessions.toLong(), 1, 1, 12) { draft = draft.copy(sessions = it.toInt()) }
+                    Stepper("Minutes per session", draft.dailyTarget.toLong(), 5, 5, 300) { draft = draft.copy(dailyTarget = it.toInt()) }
+                    Text(
+                        "Goal ${TimerMath.formatDuration(draft.dailyGoalUnits)} a day. The timer stops itself at the end of each session; pausing keeps the time you've done.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Palette.Muted,
+                    )
+                }
                 HabitType.STEPS -> Stepper("Steps per day", draft.dailyTarget.toLong(), 500, 500, 50_000) { draft = draft.copy(dailyTarget = it.toInt()) }
             }
 
@@ -261,7 +270,7 @@ fun EditHabitScreen(vm: MainViewModel, habitId: Long, onDone: () -> Unit, onDele
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete ${draft.name}?") },
-            text = { Text("This removes the habit and all of its history, timers and notes. It can't be undone.") },
+            text = { Text("This removes the habit and all of its history and timers. It can't be undone.") },
             confirmButton = {
                 Button(onClick = {
                     scope.launch { vm.repository.deleteHabit(habitId); confirmDelete = false; onDeleted() }
@@ -274,7 +283,7 @@ fun EditHabitScreen(vm: MainViewModel, habitId: Long, onDone: () -> Unit, onDele
 
 private fun withType(h: Habit, type: HabitType): Habit = when (type) {
     HabitType.COUNT -> h.copy(type = type, dailyTarget = 1)
-    HabitType.TIMED -> h.copy(type = type, dailyTarget = 30, isNegative = false,
+    HabitType.TIMED -> h.copy(type = type, dailyTarget = 30, sessions = 1, isNegative = false,
         schedule = if (h.schedule.kind == ScheduleKind.TIMES_PER_WEEK) Schedule.Daily else h.schedule)
     HabitType.STEPS -> h.copy(type = type, dailyTarget = 10_000, isNegative = false,
         schedule = if (h.schedule.kind == ScheduleKind.TIMES_PER_WEEK) Schedule.Daily else h.schedule)

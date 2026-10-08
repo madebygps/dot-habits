@@ -23,7 +23,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,9 +79,9 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
         return
     }
     val history = remember(raw, ui.snapshot) { vm.repository.histories(raw).first { it.habit.id == habitId } }
-    val notes by vm.repository.notes(habitId).collectAsStateWithLifecycle(emptyMap())
     val weekStart = raw.settings.weekStart
     var editing by remember { mutableStateOf<LocalDate?>(null) }
+    var showHelp by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = Palette.Black,
@@ -88,7 +89,10 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
             TopAppBar(
                 title = { Text(today.habit.name) },
                 navigationIcon = { TextButton(onClick = onBack) { Text("BACK") } },
-                actions = { TextButton(onClick = { onEdit(habitId) }) { Text("EDIT") } },
+                actions = {
+                    TextButton(onClick = { showHelp = true }, modifier = Modifier.semantics { contentDescription = "How to read this screen" }) { Text("?") }
+                    TextButton(onClick = { onEdit(habitId) }) { Text("EDIT") }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Palette.Black),
             )
         },
@@ -105,7 +109,7 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
             item { HistoryCalendar(history, ui.snapshot.date, weekStart, onDay = { editing = it }) }
             item {
                 OutlinedButton(onClick = { editing = ui.snapshot.date }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Edit today / add note")
+                    Text("Edit today")
                 }
             }
             if (today.habit.type == HabitType.TIMED && history.sessions.isNotEmpty()) {
@@ -114,32 +118,23 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
                     item(key = "s-${s.id}") { SessionRow(s, onDelete = { vm.viewModelScopeLaunch { vm.repository.deleteSession(s.id) } }) }
                 }
             }
-            if (notes.isNotEmpty()) {
-                item { Text("NOTES", style = MaterialTheme.typography.labelSmall) }
-                notes.entries.sortedByDescending { it.key }.take(30).forEach { (d, text) ->
-                    item(key = "n-$d") {
-                        Column(Modifier.fillMaxWidth().clickable { editing = d }) {
-                            Text(d.format(dayFmt).uppercase(), style = MaterialTheme.typography.labelSmall)
-                            Text(text, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                }
-            }
             item { Spacer(Modifier.height(32.dp)) }
         }
     }
 
     editing?.let { day ->
-        EditDayDialog(vm, today, history, day, notes[day].orEmpty(), onDismiss = { editing = null })
+        EditDayDialog(vm, today, history, day, onDismiss = { editing = null })
     }
+    if (showHelp) HelpDialog(today, onDismiss = { showHelp = false })
 }
 
 @Composable
 private fun Hero(t: HabitToday, vm: MainViewModel) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(180.dp)) {
-            Ring(t.fraction, t.segments, Modifier.fillMaxSize(), dashedTrack = t.habit.isNegative) {
-                DotIcon(t.habit.icon, Modifier.size(72.dp))
+            val filled = t.status == com.madebygps.dothabits.domain.TodayStatus.DONE
+            Ring(t.fraction, t.segments, Modifier.fillMaxSize(), dashedTrack = t.habit.isNegative, filled = filled) {
+                DotIcon(t.habit.icon, Modifier.size(72.dp), if (filled) androidx.compose.ui.graphics.Color.Black else Palette.Text)
             }
             if (t.habit.type == HabitType.TIMED) {
                 PlayPauseButton(t.timerRunning, 54.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id, t.timerRunning) }
@@ -150,8 +145,13 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
             val s = t.value
             DotText("%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60), dot = 5.dp)
             Spacer(Modifier.height(8.dp))
+            if (t.timerRunning) {
+                Text("${TimerMath.formatClock(t.sessionRemaining)} LEFT IN SESSION", style = MaterialTheme.typography.labelMedium, color = LocalHighlight.current)
+            }
         }
-        Text(HabitLabels.detail(t).ifEmpty { t.status.name.replace('_', ' ') }, style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+        HabitLabels.detail(t).takeIf { it.isNotEmpty() }?.let {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+        }
         Text(scheduleText(t), style = MaterialTheme.typography.labelSmall)
         if (t.habit.type == HabitType.STEPS && !t.hasData) {
             Text(
@@ -167,7 +167,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
 private fun scheduleText(t: HabitToday): String {
     val h = t.habit
     val target = when (h.type) {
-        HabitType.TIMED -> TimerMath.formatDuration(h.dailyGoalUnits)
+        HabitType.TIMED -> if (h.sessions > 1) "${h.sessions} × ${TimerMath.formatDuration(h.sessionSeconds)}" else TimerMath.formatDuration(h.dailyGoalUnits)
         HabitType.STEPS -> "${h.dailyTarget} steps"
         HabitType.COUNT -> if (h.isNegative) "≤ ${h.dailyTarget} per day" else "${h.dailyTarget}× per day"
     }
@@ -189,7 +189,7 @@ private fun StatsRow(t: HabitToday, h: HabitHistory, today: LocalDate, weekStart
         Stat("CURRENT", "${t.streak.current}$unit")
         Stat("BEST", "${t.streak.best}$unit")
         Stat("DAYS MET", HabitRules.daysMet(h.habit, today, h.values).toString())
-        Stat("30D", rate?.let { "${(it * 100).toInt()}%" } ?: "--")
+        Stat("LAST 30D", rate?.let { "${(it * 100).toInt()}%" } ?: "--")
     }
 }
 
@@ -245,16 +245,7 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
                                 Modifier.size(34.dp).let { if (clickable) it.clickable(onClickLabel = date.format(dayFmt)) { onDay(date) } else it },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Canvas(Modifier.size(26.dp)) {
-                                    val rad = size.minDimension / 2
-                                    when (status) {
-                                        DayStatus.MET -> drawCircle(highlight, rad)
-                                        DayStatus.PARTIAL -> drawCircle(highlight, rad - 2.dp.toPx(), style = Stroke(2.dp.toPx()))
-                                        DayStatus.MISSED -> drawCircle(Palette.Dim, rad - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
-                                        DayStatus.PENDING -> drawCircle(Palette.Text, rad - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
-                                        else -> Unit
-                                    }
-                                }
+                                Canvas(Modifier.size(26.dp)) { drawDayMark(status, highlight) }
                                 Text(
                                     "${date.dayOfMonth}",
                                     style = MaterialTheme.typography.labelSmall,
@@ -270,8 +261,6 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Text("● met   ○ partial / today   ◌ missed   grey = rest or before start", style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -332,12 +321,10 @@ private fun EditDayDialog(
     t: HabitToday,
     h: HabitHistory,
     day: LocalDate,
-    existingNote: String,
     onDismiss: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var manual by remember { mutableLongStateOf(-1L) }
-    var note by remember { mutableStateOf(existingNote) }
     LaunchedEffect(day) { manual = vm.repository.manualAmount(t.habit.id, day) }
     val habit = t.habit
     val zone = ZoneId.systemDefault()
@@ -360,20 +347,70 @@ private fun EditDayDialog(
                     }
                     else -> Stepper(if (habit.isNegative) "Slips" else "Completions", manual, step = 1, min = 0, max = 99) { manual = it }
                 }
-                OutlinedTextField(note, { note = it }, label = { Text("Note") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 scope.launch {
                     if (manual >= 0 && habit.type != HabitType.STEPS) vm.repository.setManualAmount(habit.id, day, manual)
-                    vm.repository.setNote(habit.id, day, note)
                     onDismiss()
                 }
             }) { Text("SAVE") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL") } },
     )
+}
+
+@Composable
+private fun HelpDialog(t: HabitToday, onDismiss: () -> Unit) {
+    val weekly = t.streak.unit == StreakUnit.WEEKS
+    val period = if (weekly) "weeks" else "scheduled days"
+    val highlight = LocalHighlight.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Reading this screen") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("STATS", style = MaterialTheme.typography.labelSmall)
+                Text("CURRENT · consecutive successful $period, ending now.", style = MaterialTheme.typography.bodySmall)
+                Text("BEST · longest run of successful $period ever.", style = MaterialTheme.typography.bodySmall)
+                Text("DAYS MET · all-time number of days the goal was reached.", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (weekly) "LAST 30D · share of the last 4 finished weeks that reached the weekly goal. The current week isn't counted until it ends."
+                    else "LAST 30D · share of scheduled days in the last 30 (not counting today) where the goal was reached. Rest days are left out.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("CALENDAR", style = MaterialTheme.typography.labelSmall)
+                LegendRow(DayStatus.MET, highlight, "Goal met")
+                LegendRow(DayStatus.PARTIAL, highlight, "Partly done")
+                LegendRow(DayStatus.MISSED, highlight, "Missed")
+                LegendRow(DayStatus.PENDING, highlight, "Today, not done yet")
+                Text("Grey numbers are rest days or before the habit started. Tap a past day to edit it.", style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
+}
+
+@Composable
+private fun LegendRow(status: DayStatus, highlight: androidx.compose.ui.graphics.Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Canvas(Modifier.size(18.dp)) { drawDayMark(status, highlight) }
+        Spacer(Modifier.width(10.dp))
+        Text(label, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDayMark(status: DayStatus, highlight: androidx.compose.ui.graphics.Color) {
+    val rad = size.minDimension / 2
+    when (status) {
+        DayStatus.MET -> drawCircle(highlight, rad)
+        DayStatus.PARTIAL -> drawCircle(highlight, rad - 2.dp.toPx(), style = Stroke(2.dp.toPx()))
+        DayStatus.MISSED -> drawCircle(Palette.Dim, rad - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
+        DayStatus.PENDING -> drawCircle(Palette.Text, rad - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
+        else -> Unit
+    }
 }
 
 @Composable

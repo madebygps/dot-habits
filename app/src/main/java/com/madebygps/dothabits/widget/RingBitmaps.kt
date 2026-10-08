@@ -16,6 +16,7 @@ object RingBitmaps {
     const val TRACK = 0xFF262626.toInt()
     const val ICON = 0xFFF2F2F2.toInt()
     const val DIM = 0xFF5C5C5C.toInt()
+    const val BLACK = 0xFF000000.toInt()
 
     fun habit(t: HabitToday, sizePx: Int, highlight: Int): Bitmap =
         ring(
@@ -25,7 +26,12 @@ object RingBitmaps {
             highlight = if (t.status == TodayStatus.SLIPPED) DIM else highlight,
             dashedTrack = t.habit.isNegative,
             icon = t.habit.icon,
-            iconColor = if (t.status == TodayStatus.REST) DIM else ICON,
+            iconColor = when (t.status) {
+                TodayStatus.DONE -> BLACK
+                TodayStatus.REST -> DIM
+                else -> ICON
+            },
+            filled = t.status == TodayStatus.DONE,
         )
 
     fun ring(
@@ -36,6 +42,7 @@ object RingBitmaps {
         dashedTrack: Boolean = false,
         icon: String? = null,
         iconColor: Int = ICON,
+        filled: Boolean = false,
     ): Bitmap {
         val bmp = createBitmap(sizePx, sizePx)
         val c = Canvas(bmp)
@@ -48,13 +55,23 @@ object RingBitmaps {
             strokeCap = Paint.Cap.BUTT
         }
         val arcs = RingGeometry.arcs(fraction, segments)
+        if (filled) {
+            c.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f - 1f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = highlight })
+        } else drawArcs(c, rect, paint, arcs, highlight, dashedTrack, stroke)
+        drawIcon(c, sizePx, icon, iconColor)
+        return bmp
+    }
+
+    private fun drawArcs(c: Canvas, rect: RectF, paint: Paint, arcs: RingGeometry.Arcs, highlight: Int, dashedTrack: Boolean, stroke: Float) {
         paint.color = TRACK
         if (dashedTrack) paint.pathEffect = DashPathEffect(floatArrayOf(stroke * 0.6f, stroke * 0.6f), 0f)
         arcs.track.forEach { (start, sweep) -> c.drawArc(rect, start, sweep, false, paint) }
         paint.pathEffect = null
         paint.color = highlight
         arcs.filled.forEach { (start, sweep) -> c.drawArc(rect, start, sweep, false, paint) }
+    }
 
+    private fun drawIcon(c: Canvas, sizePx: Int, icon: String?, iconColor: Int) {
         if (icon != null) {
             val bits = DotIcons.bits(icon)
             val area = sizePx * RingGeometry.ICON_FRACTION
@@ -67,6 +84,5 @@ object RingBitmaps {
                 c.drawCircle(x, y, cell * RingGeometry.DOT_RADIUS_FRACTION, dot)
             }
         }
-        return bmp
     }
 }

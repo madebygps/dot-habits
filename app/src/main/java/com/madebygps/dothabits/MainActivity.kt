@@ -38,7 +38,8 @@ class MainActivity : ComponentActivity() {
             val nav = rememberNavController()
             LifecycleResumeEffect(Unit) {
                 vm.onResume()
-                onPauseOrDispose { }
+                vm.startStepsTicker()
+                onPauseOrDispose { vm.stopStepsTicker() }
             }
             val request by navRequests.collectAsStateWithLifecycle()
             LaunchedEffect(request) {

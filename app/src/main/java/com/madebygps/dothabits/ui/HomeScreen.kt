@@ -227,7 +227,12 @@ private fun HabitCell(
         TodayStatus.SLIPPED -> Palette.Dim
         else -> highlight
     }
-    val iconColor = if (t.status == TodayStatus.REST) Palette.Dim else Palette.Text
+    val filled = t.status == TodayStatus.DONE
+    val iconColor = when {
+        filled -> Color.Black
+        t.status == TodayStatus.REST -> Palette.Dim
+        else -> Palette.Text
+    }
     val caption = HabitLabels.caption(t)
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -238,6 +243,7 @@ private fun HabitCell(
                 color = ringColor,
                 dashedTrack = t.habit.isNegative,
                 holdProgress = hold.value,
+                filled = filled,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)

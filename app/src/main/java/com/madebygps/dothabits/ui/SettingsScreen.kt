@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,18 +27,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -112,7 +106,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Header("HIGHLIGHT")
-            Text("Used by the app and widgets. The Glyph Matrix is always monochrome.", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 HighlightPalette.forEach { h ->
                     val selected = h.argb == settings.highlight
@@ -141,10 +134,9 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     )
                 }
             }
-            Text("Changes how weekly goals and weekly streaks are grouped. History is recalculated.", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
 
             Divider()
-            Header("STEPS · HEALTH CONNECT")
+            Header("STEPS")
             StepsSection(steps, onRequest = {
                 val s = steps
                 val perms = buildSet {
@@ -160,45 +152,34 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             })
 
             Divider()
-            Header("GLYPH MATRIX")
-            Text(
+            Header("GLYPH")
+            PermRow(
+                "Glyph Toy",
                 when {
-                    !GlyphSupport.isPhone3() -> "Glyph Toy is built in, but this device doesn't report as Nothing Phone (3)."
-                    else -> "Add “Dot Habits” in Glyph Toys, then short-press the Glyph Button to reach it. Long-press switches between today's progress and the active timer. It never completes habits or controls timers."
+                    !GlyphSupport.isPhone3() -> "Needs Nothing Phone (3)"
+                    toysManager -> "Timer for timed habits"
+                    else -> "Add it in Settings › Glyph Interface › Glyph Toys"
                 },
-                style = MaterialTheme.typography.bodySmall,
-            )
-            run {
-                var brightness by remember(settings.glyphBrightness) { mutableFloatStateOf(settings.glyphBrightness.toFloat()) }
-                Text("Brightness ${(brightness / 255f * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
-                Slider(
-                    value = brightness,
-                    onValueChange = { brightness = it },
-                    onValueChangeFinished = { scope.launch { app.settings.setGlyphBrightness(brightness.toInt()) } },
-                    valueRange = 16f..255f,
+                if (GlyphSupport.isPhone3() && toysManager) "SET UP" else null,
+            ) { GlyphSupport.openToysManager(context) }
+            if (GlyphSupport.isPhone3()) {
+                Text(
+                    "Long-press: start or pause · Hold 2 s: next timer",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Palette.Muted,
                 )
-                OutlinedButton(enabled = toysManager, onClick = { GlyphSupport.openToysManager(context) }) {
-                    Text("Open Glyph Toys manager")
-                }
-                if (!toysManager) {
-                    Text(
-                        "Glyph Toys manager not found on this system build. Open Settings › Glyph Interface › Glyph Toys instead.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Palette.Muted,
-                    )
-                }
             }
 
             Divider()
             Header("REMINDERS")
             PermRow(
                 "Notifications",
-                if (canNotify) "Allowed" else "Not allowed — reminders and the timer notification are hidden",
+                if (canNotify) "On" else "Off. Reminders and timers can't notify you",
                 if (canNotify) null else "ALLOW",
             ) { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
             PermRow(
                 "Exact alarms",
-                if (canExact) "Reminders fire on the minute" else "Reminders may arrive up to 10 minutes late",
+                if (canExact) "On time" else "May arrive up to 10 minutes late",
                 if (canExact) null else "ALLOW",
             ) {
                 runCatching {
@@ -211,7 +192,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             Divider()
             Header("HABIT ORDER")
             val habits = ui.raw?.habits.orEmpty().sortedBy { it.position }
-            Text("${habits.size} / ${com.madebygps.dothabits.data.MAX_HABITS} habits · ${com.madebygps.dothabits.data.HABITS_PER_PAGE} per page", style = MaterialTheme.typography.labelSmall)
             habits.forEachIndexed { i, h ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DotIcon(h.icon, Modifier.size(20.dp))
@@ -225,7 +205,7 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             Divider()
             Header("ABOUT")
             Text(
-                "Dot Habits is offline and local-only: no account, no server, no analytics. Data stays in this phone's app storage.",
+                "Offline. No account, no tracking. Your data stays on this phone.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Palette.Muted,
             )
@@ -242,36 +222,29 @@ private fun StepsSection(
     onOpenHc: () -> Unit,
 ) {
     if (s == null) {
-        Text("Checking…", style = MaterialTheme.typography.bodySmall); return
+        Text("Checking…", style = MaterialTheme.typography.bodySmall, color = Palette.Muted); return
     }
-    val line = when {
-        s.availability == HcAvailability.UNAVAILABLE -> "Health Connect isn't available on this device, so step habits can't update."
-        s.availability == HcAvailability.UPDATE_REQUIRED -> "Health Connect needs an update before steps can be read."
-        !s.onDeviceCounting -> "This system's Health Connect (extension ${s.sdkExtension}) doesn't count phone steps by itself — it needs extension 20+. " +
-            "Steps will only appear if another app or device writes them to Health Connect."
-        !s.readGranted -> "Health Connect can count steps from the phone itself. Allow Dot Habits to read steps to start counting — there's no step history from before you allow it."
-        else -> "Counting steps on this phone via Health Connect (extension ${s.sdkExtension})."
-    }
-    Text(line, style = MaterialTheme.typography.bodySmall)
-    if (s.availability == HcAvailability.AVAILABLE && s.readGranted) {
-        Text(
-            if (!s.backgroundFeatureAvailable) "Background reading isn't supported here; widget and Glyph steps refresh when you open the app."
-            else if (s.backgroundGranted) "Background refresh: on (about hourly)."
-            else "Background refresh: off — widget and Glyph steps update when you open the app.",
-            style = MaterialTheme.typography.bodySmall,
-            color = Palette.Muted,
-        )
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        when (s.availability) {
-            HcAvailability.UPDATE_REQUIRED -> OutlinedButton(onClick = onUpdate) { Text("Update Health Connect") }
-            HcAvailability.AVAILABLE -> {
-                if (!s.readGranted || (s.backgroundFeatureAvailable && !s.backgroundGranted)) {
-                    OutlinedButton(onClick = onRequest) { Text(if (s.readGranted) "Allow background" else "Allow steps") }
-                }
-                TextButton(onClick = onOpenHc) { Text("HEALTH CONNECT") }
-            }
-            HcAvailability.UNAVAILABLE -> Unit
+    when {
+        s.availability == HcAvailability.UNAVAILABLE ->
+            PermRow("Health Connect", "Not available on this phone", null) {}
+        s.availability == HcAvailability.UPDATE_REQUIRED ->
+            PermRow("Health Connect", "Needs an update", "UPDATE", onUpdate)
+        !s.onDeviceCounting ->
+            PermRow("Step counting", "This phone can't count steps itself. Another app must add them to Health Connect.", "OPEN", onOpenHc)
+        !s.readGranted ->
+            PermRow("Step counting", "Off. Counting starts when you allow it", "ALLOW", onRequest)
+        else -> {
+            PermRow("Step counting", "On", "MANAGE", onOpenHc)
+            PermRow(
+                "Background refresh",
+                when {
+                    !s.backgroundFeatureAvailable -> "Not supported. Updates when you open the app"
+                    s.backgroundGranted -> "On, about every 15 minutes"
+                    else -> "Off. Widgets and Glyph update when you open the app"
+                },
+                if (s.backgroundFeatureAvailable && !s.backgroundGranted) "ALLOW" else null,
+                onRequest,
+            )
         }
     }
 }

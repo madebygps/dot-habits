@@ -31,4 +31,11 @@ class WidgetGridTest {
             assertTrue(g.ringDp * g.rows <= h - 20 + 0.01f || g.ringDp == 16f)
         }
     }
+
+    @Test fun packedColumnsNeverOverflowWidth() {
+        for (w in 100..420 step 20) for (h in 60..420 step 20) {
+            val g = WidgetGrid.forSize(w.toFloat(), h.toFloat())
+            assertTrue("w=$w h=$h $g", g.cellDp * g.cols <= w - 20 + 0.01f || g.ringDp == 16f)
+        }
+    }
 }

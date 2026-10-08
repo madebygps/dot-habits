@@ -14,22 +14,30 @@ Everything stays on the phone. There's no account, no server, no `INTERNET` perm
 
 - **Home:** a 2-column × 3-row grid of large progress rings, six habits per page, up to 24 habits on four pages.
   Each ring has a monochrome dot icon in the middle and the label underneath. Page dots, Statistics and Settings sit at the bottom.
+  The line under each name shows the current streak or nothing; progress is in the ring and best streaks are in Statistics.
+  When a habit's goal is met (for today, or for the week on weekly habits), its ring fills into a solid disc in the highlight colour with a black icon. The app, widget and details screen all do this. Avoid habits keep their outline.
+  Only "NEEDS REVIEW", "NO STEP DATA" or a running timer's time left in the session replace it.
 - **Press and hold** a ring (about 0.5 s, with a haptic tick) to log a completion. An **Undo** snackbar follows.
   A tap opens the habit's details.
 - **Habit types**
   - *Check / count:* one or more completions a day. For example, Chonk Meds 2×/day shows a ring split into 2 segments.
-  - *Timer:* sessions add up toward a daily duration, for example Read 1 hour. A play/pause button sits on the ring's lower-right.
+  - *Timer:* a number of sessions × minutes per day, for example Read 1 × 60 or Deep Work 4 × 25. The ring has one segment per session.
+    A play/pause button sits on the ring's lower-right. Each run stops itself when the current session's time is up.
   - *Steps:* read automatically from Health Connect.
   - *Avoid:* negative habits. Holding logs a slip, and the day succeeds while slips stay within the allowance.
 - **Schedules:** every day, selected weekdays, N *distinct* days per week, or N times per week.
 - **Streaks:** current and best. Daily streaks follow the schedule. Weekly streaks count consecutive successful weeks.
 - **Details:** a big ring, streak stats, days met, 30-day rate and a month calendar.
-  Tap any past day to **edit or backfill** amounts and add a **daily note**. Timer sessions are listed and can be deleted.
+  Tap any past day to **edit or backfill** amounts. A **?** button explains the stats and calendar marks. Timer sessions are listed and can be deleted.
+- **Statistics:** pick 30D, 60D, 90D or ALL. Shows the completion rate for the range with the change against the previous period,
+  a per-week bar chart (per month when the range is over 26 weeks), consistency by weekday, and one row per habit with its rate and streaks.
+  A goal is a scheduled day for daily or selected-weekday habits, or a finished week for weekly habits. Rest days, today and the current
+  week never count (`domain/Stats.kt`). The weekday chart uses daily and selected-weekday habits only.
 - **Reminders:** per-habit times. They only fire on scheduled days, and only when the habit isn't already done.
 - **Settings:** highlight colour (Signal red by default, shared by the app and widgets), week start (Monday by default),
   Health Connect, Glyph and permission status, and habit order.
-- **Widget:** display-only, with three responsive sizes. Tapping anywhere opens the app.
-- **Glyph Toy:** shows today's progress, or the active timer. **Long press** switches between the two views.
+- **Widgets:** display-only. *Dot Habits* shows six rings in three responsive sizes and opens the app. *One habit* shows a habit you pick, from 1×1 up, and opens that habit's details.
+- **Glyph Toy:** a timer for your timed habits. **Long press** starts or pauses it, **holding ~2 s** switches to the next timed habit, and a short animation plays when a session ends.
 
 ## Setup
 
@@ -96,8 +104,14 @@ The app never invents a value.
 
 - A session is stored as wall-clock instants (`start`, `end`), plus the monotonic `elapsedRealtime` at start. Nothing depends on the process staying alive, so
   closing the app or locking the screen loses nothing. Only one timer runs at a time; starting another pauses the first.
-- While a timer runs there's an ongoing notification with a system chronometer and a Pause action.
-  An exact alarm fires when the daily goal is reached. **No foreground service is used:** the time is computed from
+- **Sessions:** a timed habit's goal is sessions × minutes. Starting a run gives it a limit equal to what's left of the
+  current session (all of it for a fresh session, the rest after a pause, so paused time is kept). The run stops by itself
+  at that limit: the stored end is capped at the limit, so the time is right even if nothing was running at that moment,
+  and the run is closed on the alarm, on app open, at app start and by the Glyph toy. Starting again gives a full new
+  session, including extra sessions after the goal. Old runs without a limit behave as open-ended runs.
+- While a timer runs there's an ongoing notification that counts down the current session, with a Pause action.
+  An exact alarm (or a 10-minute window without exact-alarm access) fires at the end of the session and posts a
+  "session done" notification. **No foreground service is used:** the time is computed from
   timestamps, so a service would only cost battery. None of the Android 14+ foreground-service types fit a long
   habit timer either.
 - **Midnight:** a session that crosses midnight is split, and each day gets the time that actually fell on it.
@@ -106,7 +120,7 @@ The app never invents a value.
   On the Phone (3), `setAndAllowWhileIdle` got a 1-hour window, so the app uses `setWindow` instead.
 - **Reboot:** each session records `Settings.Global.BOOT_COUNT`. After a reboot, a session that was running is marked
   **Needs review**, and it counts *only up to the last moment the app confirmed it was running*. The app confirms this
-  on app open, on Glyph toy ticks and on the hourly worker. A notification and a card on the detail screen let you
+  on app open, on Glyph toy ticks and on the 15-minute worker. A notification and a card on the detail screen let you
   keep the time up to that last confirmation, keep it up to the restart time, or discard the session.
   Time is never silently lost and never over-counted.
 - **Clock changes:** while a session is running, its length is measured on the monotonic clock, so moving the clock by hand
@@ -116,12 +130,15 @@ The app never invents a value.
 ### Reminders and background behaviour
 
 - AlarmManager is used only for things the user would notice if they were late: the next reminder, midnight rollover
-  and the timer-goal moment. One reminder alarm is scheduled at a time and is recomputed after every change, after boot, and after time or zone changes.
+  and the end of a timer session. One reminder alarm is scheduled at a time and is recomputed after every change, after boot, and after time or zone changes.
 - Exact alarms (`SCHEDULE_EXACT_ALARM`) are optional. Android 14+ denies them by default. Without them, reminders use a
   10-minute window, and Settings shows the status with a button to allow them. `USE_EXACT_ALARM` is deliberately not requested.
-- WorkManager runs hourly (deferrable, only when the battery isn't low) to sync steps and refresh widgets. Widgets otherwise update
+- WorkManager runs every 15 minutes, its minimum (deferrable, only when the battery isn't low), to sync steps and refresh widgets.
+  While the app is open it also reads steps every minute, which matches how often Health Connect saves phone steps (at most
+  about once a minute). Unchanged totals don't trigger a widget redraw. Health Connect rate-limits background reads more
+  strictly than foreground ones and doesn't publish the numbers, so background reads are kept to one small aggregate per run. Widgets otherwise update
   only when data changes (`updatePeriodMillis = 0`).
-- The Glyph Toy reads new data once a minute and pushes a frame only when the pixels change. While the screen is visible, the app UI ticks every second.
+- The Glyph Toy updates once a second while a timer runs, otherwise once a minute, and pushes a frame only when the pixels change. While the screen is visible, the app UI ticks every second.
 
 ## Steps and Health Connect (phone only)
 
@@ -142,7 +159,7 @@ The app never invents a value.
   - The extension level is below 20, so no on-device counting and another source is needed.
   - Steps aren't allowed yet.
   - Counting is on, and whether background refresh is on.
-- It requests `READ_STEPS`, plus `READ_HEALTH_DATA_IN_BACKGROUND` when that feature is available, so the widget and Glyph update hourly.
+- It requests `READ_STEPS`, plus `READ_HEALTH_DATA_IN_BACKGROUND` when that feature is available, so the widget and Glyph update about every 15 minutes.
 - When there's no reading for today, the habit shows **"NO STEP DATA"**. There's no estimate and no silent fallback.
 - The privacy/rationale screen (`PrivacyActivity`) is wired to Health Connect's rationale and permission-usage intents.
 
@@ -155,12 +172,26 @@ Without a source like that, step habits can't fill in automatically. No third-pa
 - It's a standard toy service: the `com.nothing.glyph.TOY` intent filter, name, preview, summary, `longpress=1` and `aod_support=1`.
   The system binds and unbinds it. The user opts in by adding *Dot Habits* in the Glyph Toys manager.
   Settings › Glyph opens that manager when the documented intent resolves (system builds 20250829 and later). Otherwise it points you to system Settings.
-- **Today view:** a ring for done/due today, with `n/m` text, or a check mark when everything's done.
-  **Timer view:** a ring for progress toward the goal, a play or pause mark, and minutes (or h:mm).
-- **Long press** (`EVENT_CHANGE`) only switches the view, and the choice is saved. Short press cycles toys and belongs to the system.
-  The toy never completes habits and never controls timers.
-- **AOD:** it answers `EVENT_AOD` (sent once a minute when it's chosen as the AOD toy) with a fresh frame.
-- Frames are built as a bitmap → `GlyphMatrixObject` with the documented 0–255 brightness, which is adjustable in Settings.
+- **Timers only.** The toy shows the running timer. If none is running, it shows the first timed habit due today that
+  isn't done yet, in home-screen order, paused. The ring has one segment per session, clockwise from 12 o'clock, and fills
+  with the day's progress. A play or pause mark sits at the top, and the centre counts down the current session in minutes
+  (seconds in the last minute). The countdown is dimmed while paused.
+  When every timed habit is done, it shows a full ring and a check mark. With no timed habits due today, it shows a dim ring and "--".
+- **Session end:** when a run reaches its limit, the toy closes it and plays a short pulse animation that ends on a check mark.
+  If the toy isn't bound at that moment, the session-done notification still fires.
+- The preview in the Glyph Toys manager follows Nothing's Phone (3) preview spec: a 512 px circle of 25×25 square LEDs that shows a sample progress ring.
+  Only the 489 LEDs that physically exist on the round matrix are drawn (`GlyphFrames.isLed`).
+- **Long press** (`EVENT_CHANGE`) starts or pauses the shown timer. Short press cycles toys and belongs to the system.
+- **Hold ~2 s** switches to the next timed habit that's due and not done. This uses the documented `action_down` / `action_up`
+  events; the hold length is our own convention, not a Nothing-defined gesture. Measured on a Phone (3): `change` arrives about
+  0.5 s after `action_down` and `action_up` on release, so start/pause happens on release and a switch happens at the 2 s mark.
+  A press that arrives without `change` is ignored. Switching does nothing while a timer runs (pause it first).
+  After a switch, the habit's icon shows for about a second. With two or more timers, dots on row 21 show which one is selected.
+  The pick lasts while the app process lives, and falls back to the first open timer when the picked one is done.
+  The toy never logs completions directly; time only comes from timer runs.
+- **AOD:** it answers `EVENT_AOD` (sent once a minute when it's chosen as the AOD toy) with a fresh frame, so on AOD the countdown moves once a minute.
+- **Updates:** once a second while a timer runs, otherwise once a minute, and a frame is pushed only when the pixels change.
+- Frames are built as a bitmap → `GlyphMatrixObject` at the default brightness (255). The app has no brightness setting of its own; the system Glyph brightness applies (real-device check: confirm toys follow it).
   It's always monochrome. The app does **not** use app-level `setAppMatrixFrame`, so there are no unsolicited Glyph reminders and no always-on control beyond what the toy framework grants.
 
 ## Widget sizes
@@ -171,27 +202,35 @@ The widget shows the first six habit rings, like the app's home page. It uses `S
 - **Large** sizes add small labels under the rings when there's room.
 They use the same highlight colour and the same `TodaySnapshot` as the app. The widget is display-only, and a tap opens the app.
 
+**One habit** widget: placing it opens a picker (`HabitWidgetConfigActivity`). The choice is stored in the widget's Glance state,
+and the launcher's *reconfigure* option (`widgetFeatures="reconfigurable"`) changes it later. Backing out of the picker cancels placement.
+It resizes freely (`SingleLayout`):
+- **1×1** and other small sizes: the ring only.
+- **Wide, short** sizes (2×1, 4×1): the ring with the name and streak beside it.
+- **2×2 and larger:** a bigger ring with the name and streak under it.
+A tap opens that habit's detail screen. If the habit is deleted, the widget says *HABIT REMOVED*.
+
 ## Needs real-device verification
 
 None of these have been tested on hardware:
 
 1. **Health Connect:** the SDK extension level and on-device step counting on Nothing OS 4.1, the background-read feature, and the permission flow.
-2. **Glyph Toy:** that it registers in the Toys manager, the frame orientation and brightness on the 25×25 matrix, long press, AOD ticks,
+2. **Glyph Toy:** that it registers in the Toys manager, the frame orientation and brightness on the 25×25 matrix, long press start/pause, the session-end animation, AOD ticks,
    `register(DEVICE_23112)`, the `Build.MODEL` check (`A024`), and the Toys manager intent.
 3. **Widgets:** the real cell sizes on Nothing Launcher and the responsive breakpoints.
 4. **Layout:** the 2×3 ring grid on the Phone (3) display, including edge-to-edge insets and gesture navigation.
-5. **Alarms and notifications:** exact versus windowed reminders under Nothing OS battery management, the midnight rollover, and the timer goal alarm.
+5. **Alarms and notifications:** exact versus windowed reminders under Nothing OS battery management, the midnight rollover, and the session-end alarm.
 6. **Reboot flow:** a running timer → reboot → the Needs-review card and notification.
-7. **Battery:** real-world drain from the hourly worker and Glyph AOD.
+7. **Battery:** real-world drain from the 15-minute worker and Glyph AOD.
 
 ## Project layout
 
 ```
 app/src/main/java/com/madebygps/dothabits/
-  domain/   pure rules: Model, HabitRules (schedules/streaks), TimerMath, Snapshot, CompletionPolicy, ReminderPlanner, DotArt
+  domain/   pure rules: Model, HabitRules (schedules/streaks), Stats (range stats), TimerMath, Snapshot, CompletionPolicy, ReminderPlanner, DotArt
   data/     Room database, DataStore settings, HabitRepository (single writer), StepsRepository (Health Connect)
   system/   Notifications, Alarms, receivers, Refresh fan-out, StepsSyncWorker
-  widget/   Glance widget (display-only)
+  widget/   Glance widgets (display-only): six-ring DotWidget, single HabitWidget + picker
   glyph/    GlyphToyService, GlyphFrames (pure 25×25 renderer), GlyphSupport
   ui/       Compose screens: Home, Detail, Edit, Stats, Settings, Privacy
 app/libs/           Nothing GlyphMatrix SDK AAR + its licence

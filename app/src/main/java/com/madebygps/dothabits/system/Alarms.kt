@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.madebygps.dothabits.domain.ReminderPlanner
-import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.domain.TodaySnapshot
 import java.time.Instant
 import java.time.LocalDateTime
@@ -16,8 +15,9 @@ import java.time.ZoneId
  *  - the next habit reminder (exact if the user allowed "Alarms & reminders", otherwise a
  *    10-minute window — Android 14+ denies SCHEDULE_EXACT_ALARM by default for new installs),
  *  - local midnight, so widgets/Glyph roll over to the new day (10-minute window without exact permission),
- *  - the moment a running timer reaches its daily goal (10-minute window without exact permission;
- *    windows shorter than 10 minutes aren't allowed for inexact alarms).
+ *  - the end of the running timer's session, when the timer stops itself and alerts (exact when
+ *    allowed; otherwise a 10-minute window, the shortest Android allows for inexact alarms. The
+ *    stored limit still stops the time at the right moment; only the alert can be late).
  * Everything else (steps sync, periodic widget refresh) is deferred work via WorkManager.
  */
 object Alarms {
@@ -56,9 +56,9 @@ object Alarms {
         // setAndAllowWhileIdle gets a ~1h batching window on Phone (3) (seen in dumpsys alarm); bound it to 10 min.
         else am.setWindow(AlarmManager.RTC, midnight, WINDOW_MS, midnightPi)
 
-        // Timer goal
+        // End of the running timer's session
         val running = snapshot.habits.firstOrNull { it.timerRunning }
-        val goalAt = running?.let { TimerMath.goalReachedAt(it.value, it.habit.dailyGoalUnits, Instant.now()) }
+        val goalAt = running?.let { Instant.now().plusSeconds(it.sessionRemaining) }
         val goalPi = pi(context, RC_GOAL, AlarmReceiver.ACTION_TIMER_GOAL, running?.habit?.id ?: 0)
         if (goalAt == null) am.cancel(goalPi)
         else if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), goalPi)

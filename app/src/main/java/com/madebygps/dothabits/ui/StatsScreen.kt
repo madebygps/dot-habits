@@ -61,7 +61,7 @@ import kotlin.math.roundToInt
 /** Overall completion for a chosen range, its trend, weekday consistency and a compact row per habit. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatsScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun StatsScreen(vm: MainViewModel, onOpen: (Long) -> Unit) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val raw = ui.raw ?: return
     val today = ui.snapshot.date
@@ -75,7 +75,6 @@ fun StatsScreen(vm: MainViewModel, onBack: () -> Unit, onOpen: (Long) -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Statistics") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("BACK") } },
                 actions = {
                     TextButton(onClick = { showHelp = true }, modifier = Modifier.semantics { contentDescription = "How statistics are counted" }) { Text("?") }
                 },

@@ -3,6 +3,7 @@ package com.madebygps.dothabits.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,18 +16,19 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -38,8 +40,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +54,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -59,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.madebygps.dothabits.R
 import com.madebygps.dothabits.data.HABITS_PER_PAGE
 import com.madebygps.dothabits.data.MAX_HABITS
 import com.madebygps.dothabits.domain.HabitLabels
@@ -82,6 +89,7 @@ fun HomeScreen(
 ) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         vm.events.collect { e ->
             when (e) {
@@ -108,9 +116,9 @@ fun HomeScreen(
             Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .systemBarsPadding(),
+                .consumeWindowInsets(inner),
         ) {
-            Header(ui.snapshot.date, ui.snapshot.doneCount, ui.snapshot.dueCount)
+            Header(ui.snapshot.date, ui.snapshot.doneCount, ui.snapshot.dueCount, onAbout = { showAbout = true })
             if (ui.raw != null && habits.isEmpty()) {
                 EmptyState(onAdd = onAdd, onExamples = vm::addExamples, modifier = Modifier.weight(1f))
             } else {
@@ -136,21 +144,32 @@ fun HomeScreen(
             )
         }
     }
+    if (showAbout) AboutSheet(onDismiss = { showAbout = false })
 }
 
 @Composable
-private fun Header(date: java.time.LocalDate, done: Int, due: Int) {
-    Row(
+private fun Header(date: java.time.LocalDate, done: Int, due: Int, onAbout: () -> Unit) {
+    Box(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 24.dp)
+            .height(56.dp),
     ) {
-        if (date != java.time.LocalDate.MIN) {
-            DotText(date.dayOfWeek.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH) + " " + date.dayOfMonth, dot = 3.dp)
+        Box(Modifier.align(Alignment.CenterStart)) {
+            if (date != java.time.LocalDate.MIN) {
+                DotText(date.dayOfWeek.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH) + " " + date.dayOfMonth, dot = 3.dp)
+            }
         }
-        Spacer(Modifier.weight(1f))
-        if (due > 0) DotText("$done/$due", dot = 3.dp, color = if (done == due) LocalHighlight.current else Palette.Muted)
+        IconButton(onClick = onAbout, modifier = Modifier.align(Alignment.Center)) {
+            Image(
+                painter = painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = "About Dot Habits",
+                modifier = Modifier.size(48.dp),
+            )
+        }
+        Box(Modifier.align(Alignment.CenterEnd)) {
+            if (due > 0) DotText("$done/$due", dot = 3.dp, color = if (done == due) LocalHighlight.current else Palette.Muted)
+        }
     }
 }
 

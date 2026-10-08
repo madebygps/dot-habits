@@ -6,6 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
@@ -46,7 +49,17 @@ class MainActivity : ComponentActivity() {
                 request?.let { nav.navigate("detail/$it") { launchSingleTop = true }; navRequests.value = null }
             }
             DotTheme(highlight = Color(settings.highlight)) {
-                NavHost(nav, startDestination = "home") {
+                NavHost(
+                    nav,
+                    startDestination = "home",
+                    enterTransition = { fadeIn(animationSpec = tween(200)) },
+                    exitTransition = { fadeOut(animationSpec = tween(200)) },
+                    popEnterTransition = { fadeIn(animationSpec = tween(200)) },
+                    popExitTransition = { fadeOut(animationSpec = tween(200)) },
+                    predictivePopEnterTransition = { fadeIn(animationSpec = tween(200)) },
+                    predictivePopExitTransition = { fadeOut(animationSpec = tween(200)) },
+                    sizeTransform = null,
+                ) {
                     composable("home") {
                         HomeScreen(
                             vm = vm,
@@ -72,8 +85,8 @@ class MainActivity : ComponentActivity() {
                             onDeleted = { nav.popBackStack("home", inclusive = false) },
                         )
                     }
-                    composable("stats") { StatsScreen(vm = vm, onBack = { nav.popBackStack() }, onOpen = { id -> nav.navigate("detail/$id") }) }
-                    composable("settings") { SettingsScreen(vm = vm, onBack = { nav.popBackStack() }) }
+                    composable("stats") { StatsScreen(vm = vm, onOpen = { id -> nav.navigate("detail/$id") }) }
+                    composable("settings") { SettingsScreen(vm = vm) }
                 }
             }
         }

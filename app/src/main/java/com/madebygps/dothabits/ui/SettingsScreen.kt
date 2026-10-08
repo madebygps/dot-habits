@@ -63,7 +63,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
+fun SettingsScreen(vm: MainViewModel) {
     val context = LocalContext.current
     val app = context.dotApp
     val scope = rememberCoroutineScope()
@@ -96,7 +96,6 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("BACK") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Palette.Black),
             )
         },

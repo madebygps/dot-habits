@@ -88,7 +88,6 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
         topBar = {
             TopAppBar(
                 title = { Text(today.habit.name) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("BACK") } },
                 actions = {
                     TextButton(onClick = { showHelp = true }, modifier = Modifier.semantics { contentDescription = "How to read this screen" }) { Text("?") }
                     TextButton(onClick = { onEdit(habitId) }) { Text("EDIT") }

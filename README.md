@@ -6,6 +6,7 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 ## Features
 
 - **Home:** six rings per page (2×3), up to 24 habits. Hold a ring to log, tap it for details. Completed rings fill in.
+- **About:** tap the centered app icon for the installed version, creator credit, and GitHub repo.
 - **Habit types:** check/count (e.g. meds 2×/day), timer (sessions × minutes, e.g. Deep Work 4 × 25), steps, and avoid.
 - **Schedules:** every day, selected weekdays, N distinct days/week, or N times/week. The week starts Monday by default.
 - **Streaks:** daily streaks skip unscheduled days; weekly streaks reset only when a week closes below its goal.
@@ -28,6 +29,7 @@ Then add the toy in **Settings › Glyph Toy › Set up**, and allow step counti
 
 ## Good to know
 
+- **Navigation:** use Android's back gesture or system back button. In-app screen changes use a short fade without shrinking.
 - **Steps** come from Health Connect's built-in phone step counter, so no tracker app is needed. Only the phone's own
   steps count; other apps writing steps are ignored to avoid double counting. Counting starts once access is granted,
   so there is no earlier history. Steps sync about every 15 minutes in the background and every minute while the app is open.
@@ -37,10 +39,14 @@ Then add the toy in **Settings › Glyph Toy › Set up**, and allow step counti
   ships only as an AAR, so it's committed in `app/libs/` with its [EULA](app/libs/GLYPH_SDK_LICENSE.md).
   Commercial use needs Nothing's written permission. No API key is needed on Android 16.
 
+## Verified on device
+
+- Glyph Toy follows the system Glyph brightness
+- The single-habit widget on the home screen
+
 ## Not yet verified on device
 
-- Glyph Toy on AOD, and whether it follows the system Glyph brightness
-- The single-habit widget on the home screen
+- Glyph Toy on AOD
 - Battery use over a full day
 - Reboot with a timer running
 

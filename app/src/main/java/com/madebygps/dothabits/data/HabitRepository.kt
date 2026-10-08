@@ -324,13 +324,14 @@ class HabitRepository(
 
     // ---- Steps cache ----------------------------------------------------------------------
 
-    suspend fun cacheSteps(byDay: Map<LocalDate, Long>) {
-        if (byDay.isEmpty()) return
+    /** Replaces cached steps from [from] onward with a successful read, so removed data doesn't linger. */
+    suspend fun cacheSteps(from: LocalDate, byDay: Map<LocalDate, Long>) {
         // Skip unchanged totals so frequent foreground reads don't redraw widgets for nothing.
-        val cached = raw.first().steps.associate { LocalDate.ofEpochDay(it.epochDay) to it.steps }
-        if (byDay.all { (d, s) -> cached[d] == s }) return
+        val cached = raw.first().steps.filter { it.epochDay >= from.toEpochDay() }
+            .associate { LocalDate.ofEpochDay(it.epochDay) to it.steps }
+        if (cached == byDay) return
         val now = System.currentTimeMillis()
-        dao.upsertSteps(byDay.map { (d, s) -> StepsDayEntity(d.toEpochDay(), s, now) })
+        dao.replaceSteps(from.toEpochDay(), byDay.map { (d, s) -> StepsDayEntity(d.toEpochDay(), s, now) })
         changed()
     }
 }

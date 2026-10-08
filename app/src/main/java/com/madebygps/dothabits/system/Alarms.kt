@@ -15,8 +15,9 @@ import java.time.ZoneId
  * AlarmManager is used only where timing matters to the user:
  *  - the next habit reminder (exact if the user allowed "Alarms & reminders", otherwise a
  *    10-minute window — Android 14+ denies SCHEDULE_EXACT_ALARM by default for new installs),
- *  - local midnight, so widgets/Glyph roll over to the new day,
- *  - the moment a running timer reaches its daily goal.
+ *  - local midnight, so widgets/Glyph roll over to the new day (10-minute window without exact permission),
+ *  - the moment a running timer reaches its daily goal (10-minute window without exact permission;
+ *    windows shorter than 10 minutes aren't allowed for inexact alarms).
  * Everything else (steps sync, periodic widget refresh) is deferred work via WorkManager.
  */
 object Alarms {
@@ -52,7 +53,8 @@ object Alarms {
         val midnight = now.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() + 2000
         val midnightPi = pi(context, RC_MIDNIGHT, AlarmReceiver.ACTION_MIDNIGHT)
         if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC, midnight, midnightPi)
-        else am.setAndAllowWhileIdle(AlarmManager.RTC, midnight, midnightPi)
+        // setAndAllowWhileIdle gets a ~1h batching window on Phone (3) (seen in dumpsys alarm); bound it to 10 min.
+        else am.setWindow(AlarmManager.RTC, midnight, WINDOW_MS, midnightPi)
 
         // Timer goal
         val running = snapshot.habits.firstOrNull { it.timerRunning }
@@ -60,6 +62,6 @@ object Alarms {
         val goalPi = pi(context, RC_GOAL, AlarmReceiver.ACTION_TIMER_GOAL, running?.habit?.id ?: 0)
         if (goalAt == null) am.cancel(goalPi)
         else if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), goalPi)
-        else am.setWindow(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), 60_000L, goalPi)
+        else am.setWindow(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), WINDOW_MS, goalPi)
     }
 }

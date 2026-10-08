@@ -101,7 +101,9 @@ The app never invents a value.
   timestamps, so a service would only cost battery. None of the Android 14+ foreground-service types fit a long
   habit timer either.
 - **Midnight:** a session that crosses midnight is split, and each day gets the time that actually fell on it.
-  An alarm at 00:00:02 rolls the widget and Glyph over to the new day.
+  An alarm at 00:00:02 rolls the widget and Glyph over to the new day. It is exact if "Alarms & reminders" is allowed, otherwise
+  within a 10-minute window (Android's minimum for inexact alarms).
+  On the Phone (3), `setAndAllowWhileIdle` got a 1-hour window, so the app uses `setWindow` instead.
 - **Reboot:** each session records `Settings.Global.BOOT_COUNT`. After a reboot, a session that was running is marked
   **Needs review**, and it counts *only up to the last moment the app confirmed it was running*. The app confirms this
   on app open, on Glyph toy ticks and on the hourly worker. A notification and a card on the detail screen let you

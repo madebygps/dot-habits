@@ -165,9 +165,10 @@ Without a source like that, step habits can't fill in automatically. No third-pa
 
 ## Widget sizes
 
-Glance responsive sizes: **small** (≥110×110 dp, about 2×2) shows the overall ring with done/due.
-**Wide** (≥250×110 dp, about 4×2) shows the first six rings in a row.
-**Large** (≥250×230 dp, about 4×4) shows six rings with labels.
+The widget shows the first six habit rings, like the app's home page. It uses `SizeMode.Exact`, so rings fit the launcher's real cell size:
+- **2×2** (default, measured at 168×168 dp on the Phone (3)'s Nothing Launcher) is the app's 2-column × 3-row grid.
+- **Wide** sizes switch to 3×2, or a single row of six when the widget is very short.
+- **Large** sizes add small labels under the rings when there's room.
 They use the same highlight colour and the same `TodaySnapshot` as the app. The widget is display-only, and a tap opens the app.
 
 ## Needs real-device verification

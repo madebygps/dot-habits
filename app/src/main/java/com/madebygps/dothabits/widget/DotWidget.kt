@@ -1,10 +1,8 @@
 package com.madebygps.dothabits.widget
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -24,13 +22,11 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
-import androidx.glance.layout.width
 import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
@@ -45,92 +41,87 @@ import kotlinx.coroutines.flow.first
 private val White = ColorProvider(Color(0xFFF2F2F2))
 private val Grey = ColorProvider(Color(0xFF8A8A8A))
 
-private data class WidgetModel(
-    val snapshot: TodaySnapshot,
-    val highlight: Int,
-    val rings: List<Pair<Bitmap, String>>,
-    val overall: Bitmap,
-)
+/**
+ * How six habits are arranged for a given widget size. Square-ish sizes (the default 2×2) use
+ * the app's own 2-column × 3-row grid; wide sizes switch to 3×2 or a single row of six.
+ */
+internal data class WidgetGrid(val cols: Int, val rows: Int, val ringDp: Float, val labels: Boolean) {
+    companion object {
+        private const val PADDING_DP = 10f
+        private const val LABEL_DP = 14f
+
+        fun forSize(widthDp: Float, heightDp: Float): WidgetGrid {
+            val w = widthDp - 2 * PADDING_DP
+            val h = heightDp - 2 * PADDING_DP
+            val (cols, rows) = when {
+                w >= 2.6f * h -> 6 to 1
+                w >= 1.3f * h -> 3 to 2
+                else -> 2 to 3
+            }
+            val cellW = w / cols
+            val cellH = h / rows
+            val labels = cellH >= 76f && cellW >= 72f
+            val ring = minOf(cellW, cellH - if (labels) LABEL_DP else 0f) * 0.88f
+            return WidgetGrid(cols, rows, ring.coerceAtLeast(16f), labels)
+        }
+    }
+}
 
 /**
- * Display-only home-screen widget. It shows the same snapshot as the app; the whole
- * widget opens the app. There are intentionally no completion or timer controls.
+ * Display-only home-screen widget: the first page of six habit rings, like the app's home grid.
+ * The whole widget opens the app; there are intentionally no completion or timer controls.
+ * SizeMode.Exact so rings are sized to the launcher's real cell size on Phone (3).
  */
 class DotWidget : GlanceAppWidget() {
 
-    companion object {
-        // Responsive buckets tuned for Nothing Launcher on Phone (3); verify on device.
-        val SMALL = DpSize(110.dp, 110.dp)
-        val WIDE = DpSize(250.dp, 110.dp)
-        val LARGE = DpSize(250.dp, 230.dp)
-    }
-
-    override val sizeMode = SizeMode.Responsive(setOf(SMALL, WIDE, LARGE))
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val app = context.dotApp
         val data = app.repository.raw.first()
         val snapshot = app.repository.snapshot(data)
         val highlight = data.settings.highlight.toInt()
-        val firstPage = snapshot.habits.take(HABITS_PER_PAGE)
-        val model = WidgetModel(
-            snapshot = snapshot,
-            highlight = highlight,
-            rings = firstPage.map { RingBitmaps.habit(it, 160, highlight) to it.habit.name },
-            overall = RingBitmaps.ring(220, snapshot.overallFraction, 0, highlight),
-        )
-        provideContent { Content(model) }
+        val density = context.resources.displayMetrics.density
+        provideContent { Content(snapshot, highlight, density) }
     }
 
     @Composable
-    private fun Content(m: WidgetModel) {
+    private fun Content(snapshot: TodaySnapshot, highlight: Int, density: Float) {
         val size = LocalSize.current
+        val grid = WidgetGrid.forSize(size.width.value, size.height.value)
+        val habits = snapshot.habits.take(HABITS_PER_PAGE)
+        val px = (grid.ringDp * density).toInt().coerceIn(48, 256)
         Box(
             modifier = GlanceModifier.fillMaxSize()
                 .background(ColorProvider(Color.Black))
                 .cornerRadius(28.dp)
-                .padding(12.dp)
+                .padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             contentAlignment = Alignment.Center,
         ) {
-            when {
-                m.snapshot.habits.isEmpty() -> Text("DOT HABITS", style = caption(12, White))
-                size.width >= LARGE.width && size.height >= LARGE.height -> Large(m)
-                size.width >= WIDE.width -> Wide(m)
-                else -> Small(m)
+            if (habits.isEmpty()) {
+                Text("DOT HABITS", style = caption(12, White))
+                return@Box
             }
-        }
-    }
-
-    @Composable
-    private fun Small(m: WidgetModel) {
-        Box(contentAlignment = Alignment.Center) {
-            Image(ImageProvider(m.overall), "Today's progress", modifier = GlanceModifier.size(92.dp))
-            Text("${m.snapshot.doneCount}/${m.snapshot.dueCount}", style = caption(20, White))
-        }
-    }
-
-    @Composable
-    private fun Wide(m: WidgetModel) {
-        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            m.rings.forEachIndexed { i, (bmp, name) ->
-                if (i > 0) Spacer(GlanceModifier.width(4.dp))
-                Image(ImageProvider(bmp), name, modifier = GlanceModifier.defaultWeight().height(52.dp))
-            }
-        }
-    }
-
-    @Composable
-    private fun Large(m: WidgetModel) {
-        Column(modifier = GlanceModifier.fillMaxSize()) {
-            Text("TODAY ${m.snapshot.doneCount}/${m.snapshot.dueCount}", style = caption(11, Grey))
-            Spacer(GlanceModifier.height(6.dp))
-            m.rings.chunked(3).forEach { row ->
-                Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {
-                    row.forEach { (bmp, name) ->
-                        Column(modifier = GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Image(ImageProvider(bmp), name, modifier = GlanceModifier.size(60.dp))
-                            Text(name, style = caption(10, White), maxLines = 1)
+            Column(modifier = GlanceModifier.fillMaxSize()) {
+                for (r in 0 until grid.rows) {
+                    Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                        for (c in 0 until grid.cols) {
+                            val t = habits.getOrNull(r * grid.cols + c)
+                            Column(
+                                modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (t != null) {
+                                    Image(
+                                        ImageProvider(RingBitmaps.habit(t, px, highlight)),
+                                        t.habit.name,
+                                        modifier = GlanceModifier.size(grid.ringDp.dp),
+                                    )
+                                    if (grid.labels) Text(t.habit.name.uppercase(), style = caption(9, Grey), maxLines = 1)
+                                }
+                            }
                         }
                     }
                 }

@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Display-only widget. Sizes map to DotWidget's responsive breakpoints:
-  2x2 small (overall ring + done/due), 4x2 wide (first six rings in a row),
-  4x4 large (first six rings with labels, 3 across x 2 down).
-  Real cell dimensions on Nothing Launcher (Phone (3)) must be verified on device.
+  Display-only widget showing the first six habit rings. Default 2x2 uses the app's
+  2-column x 3-row grid; wider sizes switch to 3x2 or 6x1, labels appear when there's room
+  (see WidgetGrid in DotWidget.kt).
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"

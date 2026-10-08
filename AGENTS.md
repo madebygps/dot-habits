@@ -28,6 +28,9 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - Glyph output stays monochrome; the highlight colour applies to app + widgets only.
 - No Essential Space integration and no Essential Key remapping.
 - Never fabricate data: no seeded history, no estimated steps. Missing step data shows "NO STEP DATA".
+- Steps come only from the phone's own counter: filter Health Connect reads to origin `android` plus the
+  device's synthetic package name. Never use the unfiltered merged total; other writers double count.
+- Step sync: WorkManager every 15 min in the background, every minute while the app is resumed. Don't add faster polling.
 - Only use documented SDK/platform APIs; verify against official docs before adding new ones.
 - Don't claim on-device verification that wasn't done.
 

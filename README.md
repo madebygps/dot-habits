@@ -15,16 +15,16 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Widgets** (display only): a six-ring grid, and a resizable single-habit widget.
 - **Glyph Toy** for timer habits: long press starts or pauses, hold for 2 s to switch habit.
 
-## Build
+## Install (development)
 
-Needs JDK 17+ and the Android SDK with platform 37.
+There is no consumer download or Play Store release yet. To install a development build, you need JDK 17+, the Android SDK with platform 37, and a Nothing Phone (3) running Nothing OS 4.1 / Android 16 connected with USB debugging enabled.
 
 ```sh
 echo "sdk.dir=$ANDROID_HOME" > local.properties
-./gradlew :app:testDebugUnitTest :app:installDebug
+./gradlew :app:installDebug
 ```
 
-Then add the toy in **Settings › Glyph Toy › Set up**, and allow step counting under **Settings › Steps**.
+To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After installing, add the toy in **Settings › Glyph Toy › Set up**, and allow step counting under **Settings › Steps**.
 
 ## Good to know
 

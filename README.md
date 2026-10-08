@@ -241,3 +241,8 @@ app/src/test/       JVM unit tests
 ```
 
 See `AGENTS.md` for contributor and agent constraints.
+
+## License
+
+MIT, see [LICENSE](LICENSE). This covers the app code and its original assets (dot-matrix icons and font).
+The Glyph Matrix SDK in `app/libs/` is Nothing's and remains under its own EULA (`app/libs/GLYPH_SDK_LICENSE.md`).

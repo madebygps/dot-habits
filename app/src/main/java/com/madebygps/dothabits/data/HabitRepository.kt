@@ -1,6 +1,7 @@
 package com.madebygps.dothabits.data
 
 import android.content.ContentResolver
+import android.os.SystemClock
 import android.provider.Settings
 import com.madebygps.dothabits.domain.CompletionPolicy
 import com.madebygps.dothabits.domain.Habit
@@ -10,6 +11,7 @@ import com.madebygps.dothabits.domain.HistoryAssembler
 import com.madebygps.dothabits.domain.HoldAction
 import com.madebygps.dothabits.domain.Schedule
 import com.madebygps.dothabits.domain.SessionState
+import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.domain.SnapshotBuilder
 import com.madebygps.dothabits.domain.TodaySnapshot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,12 +66,20 @@ class HabitRepository(
 
     fun bootCount(): Int = Settings.Global.getInt(contentResolver, Settings.Global.BOOT_COUNT, -1)
 
+    private fun clockNow() = TimerMath.ClockReading(System.currentTimeMillis(), SystemClock.elapsedRealtime(), bootCount())
+
+    /** Running sessions measure duration on the monotonic clock; see [TimerMath.rebasedStartMs]. */
+    private fun TimerSessionEntity.rebased(clock: TimerMath.ClockReading): TimerSessionEntity =
+        if (state == SessionState.RUNNING.name && endMs == null && bootCount == clock.bootCount)
+            copy(startMs = TimerMath.rebasedStartMs(startMs, startElapsedMs, clock))
+        else this
+
     fun histories(data: RawData, now: Instant = Instant.now()): List<HabitHistory> {
         val zone = zone()
         return HistoryAssembler.assemble(
             habits = data.habits.map { it.toDomain() },
             entries = data.entries.map { it.toDomain() },
-            sessions = data.sessions.map { it.toDomain() },
+            sessions = clockNow().let { c -> data.sessions.map { it.rebased(c).toDomain() } },
             stepsByDay = data.steps.associate { LocalDate.ofEpochDay(it.epochDay) to it.steps },
             today = now.atZone(zone).toLocalDate(),
             zone = zone,
@@ -197,23 +207,46 @@ class HabitRepository(
 
     suspend fun startTimer(habitId: Long) {
         writeLock.withLock {
-            val now = System.currentTimeMillis()
-            dao.runningSessions().forEach { dao.updateSession(it.copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
-            dao.insertSession(TimerSessionEntity(habitId = habitId, startMs = now, endMs = null, state = SessionState.RUNNING.name, lastAliveMs = now, bootCount = bootCount()))
+            val clock = clockNow()
+            val now = clock.wallMs
+            dao.runningSessions().forEach { dao.updateSession(it.rebased(clock).copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
+            dao.insertSession(
+                TimerSessionEntity(
+                    habitId = habitId, startMs = now, endMs = null, state = SessionState.RUNNING.name,
+                    lastAliveMs = now, bootCount = clock.bootCount, startElapsedMs = clock.elapsedMs,
+                ),
+            )
         }
         changed()
     }
 
     suspend fun pauseTimer(habitId: Long) {
         writeLock.withLock {
-            val now = System.currentTimeMillis()
+            val clock = clockNow()
+            val now = clock.wallMs
             dao.runningSessions().filter { it.habitId == habitId }
-                .forEach { dao.updateSession(it.copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
+                .forEach { dao.updateSession(it.rebased(clock).copy(state = SessionState.CLOSED.name, endMs = now, lastAliveMs = now)) }
         }
         changed()
     }
 
-    suspend fun sessions(habitId: Long) = dao.sessions(habitId).map { it.toDomain() }
+    suspend fun sessions(habitId: Long) = clockNow().let { c -> dao.sessions(habitId).map { it.rebased(c).toDomain() } }
+
+    /**
+     * Wall clock was changed (manually or by network time). Persist running sessions' start in the
+     * new wall-clock frame so elapsed time stays what the monotonic clock measured.
+     */
+    suspend fun rebaseRunningTimers() {
+        val clock = clockNow()
+        val changedAny = writeLock.withLock {
+            dao.runningSessions().map { s ->
+                val r = s.rebased(clock)
+                if (r.startMs != s.startMs) dao.updateSession(r.copy(lastAliveMs = clock.wallMs))
+                r.startMs != s.startMs
+            }.any { it }
+        }
+        if (changedAny) changed()
+    }
 
     suspend fun deleteSession(id: Long) {
         dao.deleteSession(id); changed()

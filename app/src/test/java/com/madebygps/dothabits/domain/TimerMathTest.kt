@@ -63,4 +63,35 @@ class TimerMathTest {
         assertEquals("37", TimerMath.formatGlyphClock(37 * 60 + 59))
         assertEquals("1:45", TimerMath.formatGlyphClock(105 * 60))
     }
+
+    @Test fun wallClockJumpForwardDoesNotAddTime() {
+        val startWall = at(21, 0).toEpochMilli()
+        // 15 real minutes pass, but the user moves the clock forward 2 hours.
+        val now = TimerMath.ClockReading(at(23, 15).toEpochMilli(), 1_000_000L + 15 * 60_000L, 1)
+        val start = Instant.ofEpochMilli(TimerMath.rebasedStartMs(startWall, 1_000_000L, now))
+        val running = TimerSession(1, 1, start, null, SessionState.RUNNING, start, 1)
+        assertEquals(15 * 60L, TimerMath.secondsOnDay(listOf(running), day, zone, Instant.ofEpochMilli(now.wallMs)))
+    }
+
+    @Test fun wallClockJumpBackwardDoesNotLoseTime() {
+        val startWall = at(21, 0).toEpochMilli()
+        // 30 real minutes pass, network time correction moves the clock back 10 minutes.
+        val now = TimerMath.ClockReading(at(21, 20).toEpochMilli(), 5_000L + 30 * 60_000L, 1)
+        val start = Instant.ofEpochMilli(TimerMath.rebasedStartMs(startWall, 5_000L, now))
+        val running = TimerSession(1, 1, start, null, SessionState.RUNNING, start, 1)
+        assertEquals(30 * 60L, TimerMath.secondsOnDay(listOf(running), day, zone, Instant.ofEpochMilli(now.wallMs)))
+    }
+
+    @Test fun rebaseFallsBackToWallStartWithoutMonotonicStamp() {
+        val now = TimerMath.ClockReading(at(22, 0).toEpochMilli(), 10L, 1)
+        assertEquals(at(21, 0).toEpochMilli(), TimerMath.rebasedStartMs(at(21, 0).toEpochMilli(), null, now))
+        assertEquals(at(21, 0).toEpochMilli(), TimerMath.rebasedStartMs(at(21, 0).toEpochMilli(), 99L, now))
+    }
+
+    @Test fun rebaseIsIdempotent() {
+        val now = TimerMath.ClockReading(at(22, 0).toEpochMilli(), 3_600_000L, 1)
+        val once = TimerMath.rebasedStartMs(at(19, 0).toEpochMilli(), 0L, now)
+        assertEquals(once, TimerMath.rebasedStartMs(once, 0L, now))
+        assertEquals(at(21, 0).toEpochMilli(), once)
+    }
 }

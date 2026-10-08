@@ -94,11 +94,12 @@ The app never invents a value.
 
 ### Timers, date boundaries and reboots
 
-- A session is stored as wall-clock instants (`start`, `end`). Nothing depends on the process staying alive, so
+- A session is stored as wall-clock instants (`start`, `end`), plus the monotonic `elapsedRealtime` at start. Nothing depends on the process staying alive, so
   closing the app or locking the screen loses nothing. Only one timer runs at a time; starting another pauses the first.
 - While a timer runs there's an ongoing notification with a system chronometer and a Pause action.
   An exact alarm fires when the daily goal is reached. **No foreground service is used:** the time is computed from
-  timestamps, so a service would only cost battery.
+  timestamps, so a service would only cost battery. None of the Android 14+ foreground-service types fit a long
+  habit timer either.
 - **Midnight:** a session that crosses midnight is split, and each day gets the time that actually fell on it.
   An alarm at 00:00:02 rolls the widget and Glyph over to the new day.
 - **Reboot:** each session records `Settings.Global.BOOT_COUNT`. After a reboot, a session that was running is marked
@@ -106,7 +107,9 @@ The app never invents a value.
   on app open, on Glyph toy ticks and on the hourly worker. A notification and a card on the detail screen let you
   keep the time up to that last confirmation, keep it up to the restart time, or discard the session.
   Time is never silently lost and never over-counted.
-- Moving the clock manually while a timer is running shifts that session by the same amount. Edit or delete the session if that happens.
+- **Clock changes:** while a session is running, its length is measured on the monotonic clock, so moving the clock by hand
+  or a network time correction neither adds nor removes time. On `TIME_SET` the stored start is re-anchored to the new
+  wall clock. The wall clock only decides which calendar day the time counts toward. Closed sessions keep their recorded times.
 
 ### Reminders and background behaviour
 

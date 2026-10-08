@@ -1,5 +1,6 @@
 package com.madebygps.dothabits.data
 
+import androidx.room.AutoMigration
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
@@ -59,6 +60,8 @@ data class TimerSessionEntity(
     val state: String,
     val lastAliveMs: Long,
     val bootCount: Int,
+    /** SystemClock.elapsedRealtime() at start; monotonic, valid only while [bootCount] matches. */
+    val startElapsedMs: Long? = null,
 )
 
 /** Cached Health Connect daily step totals so widgets/Glyph can render without HC access. */
@@ -140,8 +143,9 @@ interface HabitDao {
 
 @Database(
     entities = [HabitEntity::class, EntryEntity::class, TimerSessionEntity::class, StepsDayEntity::class, NoteEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class DotDatabase : RoomDatabase() {
     abstract fun dao(): HabitDao

@@ -68,7 +68,8 @@ class ActionReceiver : BroadcastReceiver() {
 
 /**
  * Reboot, clock and time-zone changes. A reboot moves running timers to NEEDS_REVIEW
- * (see HabitRepository.reconcileAfterBoot); all alarms are re-registered.
+ * (see HabitRepository.reconcileAfterBoot); a wall-clock change re-anchors running timers to
+ * their monotonic elapsed time (HabitRepository.rebaseRunningTimers); all alarms are re-registered.
  */
 class SystemEventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -78,6 +79,7 @@ class SystemEventReceiver : BroadcastReceiver() {
         app.appScope.launch {
             try {
                 app.repository.reconcileAfterBoot()
+                if (intent.action == Intent.ACTION_TIME_CHANGED) app.repository.rebaseRunningTimers()
                 Refresh.afterDataChange(context)
             } finally {
                 pending.finish()

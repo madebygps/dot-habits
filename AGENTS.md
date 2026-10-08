@@ -13,12 +13,12 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 
 - `compileSdk 37` (required by current AndroidX), `minSdk = targetSdk = 36`.
 - AGP 9 built-in Kotlin: do not add the `kotlin-android` plugin.
-- Glyph SDK is optional at build time: with `app/libs/glyph-matrix-sdk-2.0.aar` present the
-  real `src/glyph` service is compiled; otherwise `src/glyphStub`. Keep both building.
+- The Nothing GlyphMatrix SDK is committed at `app/libs/glyph-matrix-sdk-2.0.aar` (no Maven artifact
+  exists), with its EULA alongside. Keep the licence file; update both together.
 
 ## Hard constraints
 
-- **Never commit the Glyph Matrix SDK AAR** (its EULA forbids redistribution) or any key/secret.
+- Never commit keys or secrets. Glyph SDK EULA §2.2: no commercial use (paid app, ads, IAP) without written permission from Nothing.
 - Local-first: no `INTERNET` permission, backend, account, analytics or ads.
 - Widgets are **display-only**: the whole widget opens the app; no completion controls.
 - Glyph Toy long-press (`EVENT_CHANGE`) **only** switches Today ↔ Timer view. It must never

@@ -91,10 +91,9 @@
                 android:resource="@xml/dot_widget_info" />
         </receiver>
 
-        <!-- Glyph Toy (Nothing Phone (3)). Disabled in builds without the SDK AAR. -->
+        <!-- Glyph Toy (Nothing Phone (3)). -->
         <service
             android:name=".glyph.GlyphToyService"
-            android:enabled="@bool/glyph_toy_enabled"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>

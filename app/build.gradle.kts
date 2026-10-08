@@ -4,13 +4,6 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// The Glyph Matrix SDK may not be redistributed (Nothing EULA §2.1(c)), so it is
-// never committed. When a developer has downloaded it into app/libs/, the real
-// Glyph integration is compiled; otherwise a stub that reports "unavailable" is.
-val glyphAar = file("libs/glyph-matrix-sdk-2.0.aar")
-val hasGlyphSdk = glyphAar.exists()
-logger.lifecycle("Dot Habits: Glyph Matrix SDK ${if (hasGlyphSdk) "found" else "NOT found – building Glyph stub"}")
-
 android {
     namespace = "com.madebygps.dothabits"
     // Latest AndroidX (Compose 1.12, Navigation 2.10) requires compiling against API 37; the app still targets Android 16 (API 36).
@@ -24,8 +17,6 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("boolean", "HAS_GLYPH_SDK", hasGlyphSdk.toString())
-        resValue("bool", "glyph_toy_enabled", hasGlyphSdk.toString())
     }
 
     buildTypes {
@@ -43,14 +34,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
-        resValues = true
-    }
-
-    sourceSets {
-        getByName("main") {
-            java.directories.add(if (hasGlyphSdk) "src/glyph/java" else "src/glyphStub/java")
-        }
     }
 
     testOptions {
@@ -63,7 +46,9 @@ ksp {
 }
 
 dependencies {
-    if (hasGlyphSdk) implementation(files(glyphAar))
+    // Nothing GlyphMatrix SDK (not on Maven). Bundled the way Nothing's official
+    // GlyphMatrix-Example-Project does; licence: app/libs/GLYPH_SDK_LICENSE.md.
+    implementation(files("libs/glyph-matrix-sdk-2.0.aar"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

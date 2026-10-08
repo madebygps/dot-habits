@@ -48,20 +48,19 @@ export JAVA_HOME=/path/to/jdk-17
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### Glyph Matrix SDK (optional, not in this repo)
+### Glyph Matrix SDK
 
 The Glyph Toy uses Nothing's official
 [GlyphMatrix Developer Kit](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit).
-Its EULA doesn't allow redistribution, and it doesn't allow commercial use without Nothing's permission.
-So the AAR is **not committed** (`.gitignore` blocks it). To build the real toy:
+The SDK is only published as an AAR (there's no Maven artifact), so it's committed at
+`app/libs/glyph-matrix-sdk-2.0.aar`, the way Nothing's own README and its official
+[example project](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Example-Project) do it.
+Bundling it into the APK is how every Glyph Toy works; there's no system-provided copy of the SDK.
 
-```sh
-curl -L -o app/libs/glyph-matrix-sdk-2.0.aar \
-  https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/raw/main/glyph-matrix-sdk-2.0.aar
-```
-
-`app/build.gradle.kts` detects the file. Without it, the build uses a stub, the toy service is disabled in the
-manifest (`@bool/glyph_toy_enabled`), and Settings explains why. Read the SDK licence before distributing a build that includes it.
+Licence: the SDK has its own [EULA](app/libs/GLYPH_SDK_LICENSE.md), separate from this repo's code.
+It allows use "for the purpose of integrating and using the Software's functionality within your applications",
+but **commercial use needs prior written permission from Nothing** (§2.2, contact GDKsupport@nothing.tech).
+That's fine for this free personal project. Get permission before charging for the app or adding ads or in-app purchases.
 
 The manifest declares `com.nothing.ketchum.permission.ENABLE` and `<meta-data android:name="NothingKey" android:value="test"/>`.
 Nothing's kit docs say apps targeting Android 16 no longer need a real API key, and the `test` value is kept as they recommend.
@@ -187,10 +186,9 @@ app/src/main/java/com/madebygps/dothabits/
   data/     Room database, DataStore settings, HabitRepository (single writer), StepsRepository (Health Connect)
   system/   Notifications, Alarms, receivers, Refresh fan-out, StepsSyncWorker
   widget/   Glance widget (display-only)
-  glyph/    GlyphFrames (pure 25×25 renderer), GlyphSupport
+  glyph/    GlyphToyService, GlyphFrames (pure 25×25 renderer), GlyphSupport
   ui/       Compose screens: Home, Detail, Edit, Stats, Settings, Privacy
-app/src/glyph/      real GlyphToyService (needs SDK AAR)
-app/src/glyphStub/  stub when the AAR is absent
+app/libs/           Nothing GlyphMatrix SDK AAR + its licence
 app/src/test/       JVM unit tests
 ```
 

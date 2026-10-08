@@ -5,14 +5,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.madebygps.dothabits.BuildConfig
 
-/** Glyph availability checks shared by both build variants. */
+/** Glyph availability checks. */
 object GlyphSupport {
     /** Nothing Phone (3) model prefix, matching the SDK's Glyph.DEVICE_23112 ("A024"). */
     private const val PHONE_3_MODEL = "A024"
-
-    val sdkBundled: Boolean get() = BuildConfig.HAS_GLYPH_SDK
 
     fun isPhone3(): Boolean = Build.MODEL.contains(PHONE_3_MODEL)
 

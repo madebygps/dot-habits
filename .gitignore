@@ -10,8 +10,3 @@ captures/
 .cxx/
 *.keystore
 *.jks
-
-# Nothing Glyph Matrix SDK: its EULA forbids redistribution. Each developer
-# downloads it into app/libs/ locally (see README). Never commit it.
-app/libs/*.aar
-app/libs/*.jar

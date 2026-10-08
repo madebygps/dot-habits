@@ -163,13 +163,12 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
             Header("GLYPH MATRIX")
             Text(
                 when {
-                    !GlyphSupport.sdkBundled -> "This build was made without the Nothing Glyph Matrix SDK, so the Glyph Toy is disabled. See README to add it."
                     !GlyphSupport.isPhone3() -> "Glyph Toy is built in, but this device doesn't report as Nothing Phone (3)."
                     else -> "Add “Dot Habits” in Glyph Toys, then short-press the Glyph Button to reach it. Long-press switches between today's progress and the active timer. It never completes habits or controls timers."
                 },
                 style = MaterialTheme.typography.bodySmall,
             )
-            if (GlyphSupport.sdkBundled) {
+            run {
                 var brightness by remember(settings.glyphBrightness) { mutableFloatStateOf(settings.glyphBrightness.toFloat()) }
                 Text("Brightness ${(brightness / 255f * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
                 Slider(

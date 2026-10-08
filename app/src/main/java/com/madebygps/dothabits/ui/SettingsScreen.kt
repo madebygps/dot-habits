@@ -95,7 +95,7 @@ fun SettingsScreen(vm: MainViewModel) {
         containerColor = Palette.Black,
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { DotScreenTitle("Settings") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Palette.Black),
             )
         },

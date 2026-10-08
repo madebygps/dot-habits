@@ -30,6 +30,9 @@ To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After ins
 ## Good to know
 
 - **Navigation:** use Android's back gesture or system back button. In-app screen changes use a short fade without shrinking.
+- **Typography:** Settings and Statistics use dot-matrix titles; habit names and controls use regular text.
+  Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when
+  characters are unsupported or the scaled dots would not fit.
 - **Steps** come from Health Connect's built-in phone step counter, so no tracker app is needed. Only the phone's own
   steps count; other apps writing steps are ignored to avoid double counting. Counting starts once access is granted,
   so there is no earlier history. Steps sync about every 15 minutes in the background and every minute while the app is open.

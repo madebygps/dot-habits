@@ -74,7 +74,7 @@ fun StatsScreen(vm: MainViewModel, onOpen: (Long) -> Unit) {
         containerColor = Palette.Black,
         topBar = {
             TopAppBar(
-                title = { Text("Statistics") },
+                title = { DotScreenTitle("Statistics") },
                 actions = {
                     TextButton(onClick = { showHelp = true }, modifier = Modifier.semantics { contentDescription = "How statistics are counted" }) { Text("?") }
                 },

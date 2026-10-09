@@ -163,6 +163,7 @@ private fun Overview(s: RangeStats, range: StatsRange) {
 @Composable
 private fun TrendChart(buckets: List<StatsBucket>, monthly: Boolean) {
     val highlight = LocalHighlight.current
+    val colors = LocalDotColors.current
     Column {
         Canvas(Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = "Completion per ${if (monthly) "month" else "week"}" }) {
             val n = buckets.size.coerceAtLeast(1)
@@ -171,12 +172,12 @@ private fun TrendChart(buckets: List<StatsBucket>, monthly: Boolean) {
             // 50% and 100% guides.
             for (g in listOf(0.5f, 1f)) {
                 val y = size.height * (1 - g)
-                drawLine(Palette.Line, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                drawLine(colors.line, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
             }
             buckets.forEachIndexed { i, b ->
                 val x = i * slot + (slot - bar) / 2
                 val r = CornerRadius(bar / 2, bar / 2)
-                drawRoundRect(Palette.Track, Offset(x, 0f), Size(bar, size.height), r)
+                drawRoundRect(colors.track, Offset(x, 0f), Size(bar, size.height), r)
                 val rate = b.tally.rate ?: return@forEachIndexed
                 val h = (size.height * rate).coerceAtLeast(if (rate > 0) bar else 0f)
                 if (h > 0) drawRoundRect(highlight, Offset(x, size.height - h), Size(bar, h), r)
@@ -200,6 +201,7 @@ private fun TrendChart(buckets: List<StatsBucket>, monthly: Boolean) {
 @Composable
 private fun Weekdays(s: RangeStats, firstDay: DayOfWeek) {
     val highlight = LocalHighlight.current
+    val colors = LocalDotColors.current
     val days = (0L until 7L).map { firstDay.plus(it) }
     val rates = days.map { s.weekdays[it]?.rate }
     val locale = LocalConfiguration.current.locales[0]
@@ -218,10 +220,10 @@ private fun Weekdays(s: RangeStats, firstDay: DayOfWeek) {
                     Spacer(Modifier.height(4.dp))
                     Canvas(Modifier.width(18.dp).height(56.dp)) {
                         val r = CornerRadius(size.width / 2, size.width / 2)
-                        drawRoundRect(Palette.Track, cornerRadius = r)
+                        drawRoundRect(colors.track, cornerRadius = r)
                         if (rate != null && rate > 0) {
                             val h = (size.height * rate).coerceAtLeast(size.width)
-                            val color = if (best != worst && rate == best) highlight else if (rate == worst && best != worst) Palette.Dim else Palette.Muted
+                            val color = if (best != worst && rate == best) highlight else if (rate == worst && best != worst) colors.dim else colors.muted
                             drawRoundRect(color, Offset(0f, size.height - h), Size(size.width, h), r)
                         }
                     }
@@ -236,6 +238,7 @@ private fun Weekdays(s: RangeStats, firstDay: DayOfWeek) {
 @Composable
 private fun HabitRow(h: HabitRangeStats, onClick: () -> Unit) {
     val highlight = LocalHighlight.current
+    val colors = LocalDotColors.current
     val unit = if (h.streaks.unit == StreakUnit.WEEKS) "W" else "D"
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -247,7 +250,7 @@ private fun HabitRow(h: HabitRangeStats, onClick: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Canvas(Modifier.fillMaxWidth().height(6.dp)) {
             val r = CornerRadius(size.height / 2, size.height / 2)
-            drawRoundRect(Palette.Track, cornerRadius = r)
+            drawRoundRect(colors.track, cornerRadius = r)
             val rate = h.tally.rate ?: 0f
             if (rate > 0) drawRoundRect(highlight, size = Size((size.width * rate).coerceAtLeast(size.height), size.height), cornerRadius = r)
         }

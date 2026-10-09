@@ -404,6 +404,7 @@ private fun BottomBar(pages: Int, current: Int, onPage: (Int) -> Unit, onStats: 
 
 @Composable
 private fun BarButton(kind: String, label: String, onClick: () -> Unit) {
+    val colors = LocalDotColors.current
     Box(
         Modifier
             .size(48.dp)
@@ -417,16 +418,16 @@ private fun BarButton(kind: String, label: String, onClick: () -> Unit) {
             if (kind == "stats") {
                 // three dot columns of rising height
                 listOf(3, 6, 9).forEachIndexed { col, h ->
-                    for (r in 0 until h) drawCircle(Palette.Text, dot * 0.45f, Offset(dot * (1.5f + col * 3f), size.height - dot * (r + 0.5f)))
+                    for (r in 0 until h) drawCircle(colors.text, dot * 0.45f, Offset(dot * (1.5f + col * 3f), size.height - dot * (r + 0.5f)))
                 }
             } else {
                 // dotted gear-like ring
                 val r = size.width * 0.38f
                 for (i in 0 until 12) {
                     val a = Math.toRadians(i * 30.0)
-                    drawCircle(Palette.Text, dot * 0.55f, Offset(center.x + (r * kotlin.math.cos(a)).toFloat(), center.y + (r * kotlin.math.sin(a)).toFloat()))
+                    drawCircle(colors.text, dot * 0.55f, Offset(center.x + (r * kotlin.math.cos(a)).toFloat(), center.y + (r * kotlin.math.sin(a)).toFloat()))
                 }
-                drawCircle(Palette.Text, dot * 0.9f, center)
+                drawCircle(colors.text, dot * 0.9f, center)
             }
         }
     }

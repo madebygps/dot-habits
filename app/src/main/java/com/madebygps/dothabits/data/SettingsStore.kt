@@ -16,6 +16,7 @@ data class AppSettings(
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     /** ARGB highlight used by the app and widgets. The Glyph stays monochrome. */
     val highlight: Long = HighlightPalette.first().argb,
+    /** Habit shown by the display-only Habit Glyph Toy. */
     val glyphHabitId: Long? = null,
 )
 

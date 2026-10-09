@@ -208,14 +208,12 @@ class GlyphToyService : Service() {
                 running = t?.running == true
                 if (running) app.repository.touchAlive()
                 if (previous?.running == true && t?.habitId != previous?.habitId || (previous?.running == true && t?.running == false)) {
-                    // The timer stopped; if it was because the session ended, persist it and celebrate.
+                    // Persist elapsed sessions; the notification handles the completion alert.
                     val prev = previous!!
                     val finishedNow = snap.habits.firstOrNull { it.habit.id == prev.habitId }
                         ?.let { TimerMath.sessionsDone(it.value, it.habit.sessionSeconds, it.habit.sessions) > prev.sessionsDone } == true
                     if (finishedNow) {
                         app.repository.finishElapsedSessions()
-                        celebrate()
-                        last = null
                     }
                 }
                 previous = t
@@ -227,14 +225,6 @@ class GlyphToyService : Service() {
                     lastForce = force
                 }
             }
-        }
-    }
-
-    private suspend fun celebrate() {
-        val frames = GlyphFrames.celebration()
-        frames.forEachIndexed { i, f ->
-            push(f)
-            delay(if (i == frames.lastIndex) 2_000L else 90L)
         }
     }
 

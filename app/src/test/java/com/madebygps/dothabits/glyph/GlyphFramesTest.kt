@@ -114,13 +114,6 @@ class GlyphFramesTest {
         assertTrue(px.none { it == 255 })
     }
 
-    @Test fun celebrationStaysOnRealLedsAndEndsOnCheck() {
-        val frames = GlyphFrames.celebration()
-        assertTrue(frames.size > 3)
-        frames.dropLast(1).forEach { f -> (0 until 625).forEach { i -> if (f[i] != 0) assertTrue(GlyphFrames.isLed(i % 25, i / 25)) } }
-        assertEquals(1f, litFraction(frames.last()), 0.001f)
-    }
-
     @Test fun ledMaskMatchesPhone3Layout() {
         val rowCounts = (0 until 25).map { y -> (0 until 25).count { x -> GlyphFrames.isLed(x, y) } }
         assertEquals(listOf(7, 11, 15, 17, 19, 21, 21, 23, 23, 25, 25, 25, 25, 25, 25, 25, 23, 23, 21, 21, 19, 17, 15, 11, 7), rowCounts)

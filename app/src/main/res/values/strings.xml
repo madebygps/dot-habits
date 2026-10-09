@@ -15,8 +15,10 @@
     <string name="goal_done_title">%1$s done for today</string>
     <string name="goal_done_text">All %1$s logged.</string>
     <string name="reminder_text">Still to do today</string>
-    <string name="toy_name">Dot Habits</string>
+    <string name="toy_name">Dot Habits · Timers</string>
     <string name="toy_summary">Timers for your timed habits. Long-press to start or pause.</string>
+    <string name="habit_toy_name">Dot Habits · Habit</string>
+    <string name="habit_toy_summary">Your selected habit\'s icon and progress. Pick it in Dot Habits Settings. Display only.</string>
     <string name="widget_label">Dot Habits</string>
     <string name="habit_widget_label">Dot Habits · One habit</string>
     <string name="habit_widget_description">One habit\'s ring. Pick the habit, any size. Display only, tap to open.</string>

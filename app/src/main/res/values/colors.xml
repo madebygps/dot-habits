@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="launcher_bg">#000000</color>
-    <color name="widget_background">#D9F1F1F1</color>
+    <color name="widget_background">#FFF1F1F1</color>
     <color name="widget_foreground">#000000</color>
     <color name="widget_track">#9A9A96</color>
 </resources>

@@ -33,42 +33,56 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import com.madebygps.dothabits.MainActivity
 import com.madebygps.dothabits.data.HABITS_PER_PAGE
+import com.madebygps.dothabits.domain.HabitLabels
 import com.madebygps.dothabits.domain.TodaySnapshot
 import com.madebygps.dothabits.dotApp
 import kotlinx.coroutines.flow.first
 
 /**
- * How six habits are arranged for a given widget size. Square-ish sizes (the default 2×2) use
- * the app's own 2-column × 3-row grid; wide sizes switch to 3×2 or a single row of six.
+ * How habits are arranged for a given widget size. One-row widgets show as many habits as fit;
+ * larger widgets show the first page of six with progressively richer captions.
  */
 internal data class WidgetGrid(
     val cols: Int,
     val rows: Int,
     val ringDp: Float,
     val labels: Boolean,
+    val captions: Boolean,
+    val visibleHabits: Int,
     /** Column width: columns are packed and centred rather than spread across the full width. */
     val cellDp: Float,
 ) {
     companion object {
         private const val PADDING_DP = 10f
-        private const val LABEL_DP = 14f
-        private const val GAP_DP = 4f
+        private const val LABEL_DP = 13f
+        private const val CAPTION_DP = 12f
 
         fun forSize(widthDp: Float, heightDp: Float): WidgetGrid {
-            val w = widthDp - 2 * PADDING_DP
-            val h = heightDp - 2 * PADDING_DP
+            val w = (widthDp - 2 * PADDING_DP).coerceAtLeast(16f)
+            val h = (heightDp - 2 * PADDING_DP).coerceAtLeast(16f)
             val (cols, rows) = when {
-                w >= 2.6f * h -> 6 to 1
-                w >= 1.3f * h -> 3 to 2
+                h < 82f && w >= 300f -> 6 to 1
+                h < 82f && w >= 210f -> 4 to 1
+                h < 82f -> 3 to 1
+                w >= 1.55f * h -> 3 to 2
                 else -> 2 to 3
             }
             val cellW = w / cols
             val cellH = h / rows
-            val labels = cellH >= 76f && cellW >= 72f
-            val ring = minOf(cellW, cellH - if (labels) LABEL_DP else 0f) * 0.88f
+            val labels = cellH >= 72f && cellW >= 68f
+            val captions = cellH >= 96f && cellW >= 88f
+            val textDp = (if (labels) LABEL_DP else 0f) + (if (captions) CAPTION_DP else 0f)
+            val ring = minOf(cellW, cellH - textDp) * 0.84f
             val ringDp = ring.coerceAtLeast(16f)
-            val cell = minOf(cellW, ringDp + 2 * GAP_DP + if (labels) 24f else 0f)
-            return WidgetGrid(cols, rows, ringDp, labels, cell)
+            return WidgetGrid(
+                cols = cols,
+                rows = rows,
+                ringDp = ringDp,
+                labels = labels,
+                captions = captions,
+                visibleHabits = cols * rows,
+                cellDp = cellW,
+            )
         }
     }
 }
@@ -99,7 +113,7 @@ class DotWidget : GlanceAppWidget() {
     private fun Content(snapshot: TodaySnapshot, density: Float) {
         val size = LocalSize.current
         val grid = WidgetGrid.forSize(size.width.value, size.height.value)
-        val habits = snapshot.habits.take(HABITS_PER_PAGE)
+        val habits = snapshot.habits.take(minOf(HABITS_PER_PAGE, grid.visibleHabits))
         val px = (grid.ringDp * density).toInt().coerceIn(48, 256)
         Box(
             modifier = GlanceModifier.fillMaxSize()
@@ -130,6 +144,12 @@ class DotWidget : GlanceAppWidget() {
                                 if (t != null) {
                                     HabitRingImage(t, grid.ringDp.dp, px)
                                     if (grid.labels) Text(t.habit.name.uppercase(), style = caption(9, WidgetColors.dim), maxLines = 1)
+                                    if (grid.captions) {
+                                        val text = HabitLabels.caption(t).ifEmpty { HabitLabels.detail(t) }
+                                        if (text.isNotEmpty()) {
+                                            Text(text, style = caption(8, WidgetColors.dim), maxLines = 1)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -144,5 +164,9 @@ class DotWidget : GlanceAppWidget() {
 }
 
 class DotWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = DotWidget()
+}
+
+class DotLargeWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DotWidget()
 }

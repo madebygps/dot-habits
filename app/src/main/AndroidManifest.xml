@@ -80,7 +80,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Display-only home screen widget -->
+        <!-- Display-only square home screen widget. Keep this component for placed widgets. -->
         <receiver
             android:name=".widget.DotWidgetReceiver"
             android:exported="true"
@@ -93,7 +93,20 @@
                 android:resource="@xml/dot_widget_info" />
         </receiver>
 
-        <!-- Display-only single-habit widget; the habit is picked on placement. -->
+        <!-- Display-only large home screen widget. -->
+        <receiver
+            android:name=".widget.DotLargeWidgetReceiver"
+            android:exported="true"
+            android:label="@string/large_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/dot_large_widget_info" />
+        </receiver>
+
+        <!-- Display-only compact single-habit widget. Keep this component for placed widgets. -->
         <receiver
             android:name=".widget.HabitWidgetReceiver"
             android:exported="true"
@@ -105,6 +118,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/habit_widget_info" />
         </receiver>
+
+        <!-- Display-only wide single-habit widget. -->
+        <receiver
+            android:name=".widget.HabitWideWidgetReceiver"
+            android:exported="true"
+            android:label="@string/wide_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/habit_wide_widget_info" />
+        </receiver>
+
         <activity
             android:name=".widget.HabitWidgetConfigActivity"
             android:exported="true"

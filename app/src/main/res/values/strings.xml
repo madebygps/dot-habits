@@ -19,8 +19,10 @@
     <string name="toy_summary">Timed habit timers.</string>
     <string name="habit_toy_name">Dot Habits · Habit</string>
     <string name="habit_toy_summary">Shows the selected habit\'s icon and progress.</string>
-    <string name="widget_label">Dot Habits</string>
-    <string name="habit_widget_label">Dot Habits · One habit</string>
+    <string name="habit_widget_label">Dot Habits · Compact</string>
+    <string name="wide_widget_label">Dot Habits · Wide</string>
+    <string name="widget_label">Dot Habits · Square</string>
+    <string name="large_widget_label">Dot Habits · Large</string>
     <string name="habit_widget_description">One habit\'s icon and progress. Pick the habit, any size. Display only, tap to open.</string>
     <string name="widget_description">Today\'s habit rings. Display only, tap to open.</string>
 </resources>

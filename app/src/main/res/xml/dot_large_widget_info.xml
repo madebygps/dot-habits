@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Display-only widget showing up to the first six habit rings. Default 2x2 uses the app's
-  2-column x 3-row grid; one-row and wide sizes use shape-specific grids, and labels/captions
-  appear when there is room (see WidgetGrid in DotWidget.kt).
+  Large preset for the first six habits. The responsive DotWidget renderer continues adapting
+  if the user resizes it after placement.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
+    android:minWidth="250dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="50dp"
-    android:targetCellWidth="2"
+    android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:maxResizeWidth="420dp"
     android:maxResizeHeight="420dp"

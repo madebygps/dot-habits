@@ -9,8 +9,10 @@ Nothing OS 4.x / Android 16. Read "Product rules" below before changing behaviou
 export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 ./gradlew :app:testDebugUnitTest          # pure-JVM domain tests (fast)
 ./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :app:installDebug               # install the updated build on the connected phone
 ```
 
+- After every change, install the updated debug build on the connected Nothing Phone (3). If no phone is available, report that the install is blocked.
 - `compileSdk 37` (required by current AndroidX), `minSdk = targetSdk = 36`.
 - AGP 9 built-in Kotlin: do not add the `kotlin-android` plugin.
 - The Nothing GlyphMatrix SDK is committed at `app/libs/glyph-matrix-sdk-2.0.aar` (no Maven artifact

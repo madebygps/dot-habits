@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -100,10 +102,12 @@ class DotWidget : GlanceAppWidget() {
         val started = SystemClock.elapsedRealtime()
         try {
             val app = context.dotApp
-            val data = app.repository.raw.first()
-            val snapshot = app.repository.snapshot(data)
+            val initialData = app.repository.raw.first()
             val density = context.resources.displayMetrics.density
-            provideContent { Content(snapshot, density) }
+            provideContent {
+                val data by app.repository.raw.collectAsState(initialData)
+                Content(app.repository.snapshot(data), density)
+            }
         } finally {
             Log.i("DotHabitsWidget", "widget=grid id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
         }

@@ -97,27 +97,6 @@ object GlyphFrames {
         for (i in 0 until shown) set(px, x0 + i * 2, 21, if (i == selected.coerceIn(0, shown - 1)) ON else TRACK * 2)
     }
 
-    /**
-     * Short "session done" animation: a pulse expanding from the centre, then the check.
-     * Played by the toy service when a session finishes while the toy is on screen.
-     */
-    fun celebration(): List<IntArray> {
-        val frames = ArrayList<IntArray>()
-        repeat(2) {
-            for (r in listOf(1.5, 4.0, 6.5, 9.0, 11.5)) {
-                val px = IntArray(SIZE * SIZE)
-                for (y in 0 until SIZE) for (x in 0 until SIZE) {
-                    val d = sqrt((x - CENTER) * (x - CENTER) + (y - CENTER) * (y - CENTER))
-                    if (d in (r - 1.2)..(r + 1.2) && isLed(x, y)) px[y * SIZE + x] = ON
-                    else if (d in (r - 3.0)..(r - 1.2) && isLed(x, y)) px[y * SIZE + x] = TRACK * 2
-                }
-                frames += px
-            }
-        }
-        frames += IntArray(SIZE * SIZE).also { ring(it, 1f); icon(it, "check") }
-        return frames
-    }
-
     /** True for the LEDs physically present on the Phone (3) circular 25×25 matrix. */
     fun isLed(x: Int, y: Int): Boolean {
         val dx = x - CENTER

@@ -27,6 +27,21 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   The Timers Glyph Toy is timers only. Long-press (`EVENT_CHANGE`) starts/pauses the shown timer (user's explicit
   choice); it must never log completions directly. Short press is system toy cycling — don't intercept it.
   Holding ≥2 s (timed between documented `action_down`/`action_up`) switches timers; decide on release so a hold never also toggles.
+- Keep the Timers toy's functional countdown, running/paused indicator, session ring and selection feedback;
+  no decorative completion animation. Completion sound/vibration belongs to the existing session-finished notification.
+- Active timer notifications use AndroidX `ProgressStyle` + `setRequestPromotedOngoing` for Nothing's system
+  Glyph Progress. Keep the toy as the button control surface; Glyph Progress is complementary passive monitoring.
+  Use AndroidX compatibility APIs: the platform promotion builder method requires API 36.1, while Phone (3)
+  builds may run 36.0. No private APIs or vendor-app impersonation.
+- Timer progress reflects the current session, not the whole daily goal. Cancel on pause, completion or review;
+  set notification timeout to session end, respect dismissal for that run, and keep the separate completion alert.
+  Refresh progress at most every 15 seconds while running and the process is alive; no foreground service,
+  wake lock or additional polling alarms. Android owns the ticking chronometer; progress-bar refresh is best effort
+  when asleep or after process death. Never promise uninterrupted background animation.
+- Use the stored run limit and monotonic anchor for Live Update expiry/countdown; do not derive its deadline
+  anew from rounded daily totals. Duration/history edits and midnight must not wrap a still-running progress bar.
+  Nothing OS owns Glyph Progress's visual effects: numeric progress increasing is not proof of a static
+  LED animation, and the SDK does not expose a system-progress animation toggle.
 - Timed habits are sessions × minutes; each run carries `limitSeconds` and stops itself at the session end.
 - Glyph output stays monochrome; the highlight colour applies to app + widgets only.
 - No Essential Space integration and no Essential Key remapping.
@@ -57,6 +72,7 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - `data/` — Room (habits, entries, timer sessions, cached daily steps), DataStore settings,
   Health Connect reads. `HabitRepository` is the only writer and calls `onDataChanged` after writes.
 - `system/` — notifications, AlarmManager (reminders, midnight, timer session end), receivers, WorkManager.
+  `TimerNotificationUpdater` serializes fresh snapshots for Live Updates and updates only while runs exist.
 - `widget/` and `glyph/` render from the same `TodaySnapshot` the app uses.
 - `ui/` — custom Compose UI (black, dot-matrix accents).
 

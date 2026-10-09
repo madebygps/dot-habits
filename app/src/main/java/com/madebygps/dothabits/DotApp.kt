@@ -10,6 +10,7 @@ import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.system.Notifications
 import com.madebygps.dothabits.system.Refresh
 import com.madebygps.dothabits.system.StepsSyncWorker
+import com.madebygps.dothabits.system.TimerNotificationUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +45,7 @@ class DotApp : Application() {
             repository.reconcileAfterBoot()
             repository.finishElapsedSessions()
             repository.touchAlive()
+            TimerNotificationUpdater.start(this@DotApp)
         }
     }
 }

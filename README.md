@@ -16,6 +16,9 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Widgets** (display only): a six-ring grid, and a resizable single-habit widget.
 - **Glyph Toys:** Habit shows a selected habit's icon and progress (display only); Timers has countdowns,
   long press to start or pause, and hold for 2 s to switch timer. Enable either or both.
+- **Glyph Progress:** running sessions also publish an Android 16 Live Update so Nothing OS can display
+  progress while locked, without cycling to the Timers toy. The toy remains the start/pause/selection
+  control surface, with its countdown and session ring but no decorative completion animation.
 
 ## Install (development)
 
@@ -32,12 +35,28 @@ Short press cycles enabled toys using Nothing's system controls. The habit selec
 if that habit is deleted, pick another (the toy never silently substitutes one). Missing step readings
 show "NO STEP DATA" one word at a time. Allow step counting under **Settings › Steps**.
 
+For persistent timer progress, allow Dot Habits notifications and Live Updates, then enable
+**Dot Habits** in the phone's **Settings › Glyph › Glyph Progress**. The app's **Settings › Glyph Progress**
+section links to notification settings. Starting a timed session from either the app or Timers toy
+publishes progress; pausing removes it, and resuming starts a fresh Live Update with retained session time.
+Dismissed progress stays hidden for that run. Completion still uses the separate session-finished
+notification for sound/vibration, subject to your channel, volume and Do Not Disturb settings.
+
 Background sync writes bounded, non-personal diagnostics for the latest 48 hours. On a development build:
 
 ```sh
 adb logcat -s DotHabitsWorker DotHabitsRefresh DotHabitsSteps DotHabitsWidget
 adb shell run-as com.madebygps.dothabits cat files/background-sync.log
 ```
+
+### System Glyph Progress
+
+Timer notifications use Android 16
+[ProgressStyle / Live Updates](https://developer.android.com/develop/ui/views/notifications/live-update).
+Nothing OS renders the Glyph Progress display; Dot Habits supplies session progress and a countdown
+deadline, not animation frames. On Phone (3), Nothing OS 4.1 (`B4.1-260814-1733`), the user observed
+pulsing between progress increments while logged numeric progress only increased. Nothing's public
+SDK does not expose the system renderer or an animation toggle, so the internal effect is unverified.
 
 ## Good to know
 
@@ -55,6 +74,11 @@ adb shell run-as com.madebygps.dothabits cat files/background-sync.log
   Switching a habit away from Timer pauses its run. While visible, the app confirms running time every second
   so restart recovery retains the latest observed time; time while asleep remains conservative.
   Short pause/resume runs accumulate before rounding to whole seconds.
+- **Live timer progress** refreshes at most every 15 seconds while the process is alive, without a
+  foreground service, wake lock or polling alarm. Android ticks the countdown itself; progress-bar updates
+  can pause during sleep or process eviction. The ongoing notification expires at session end even if
+  the app is not executing. Completion alerts still depend on the session-end alarm and may be delayed
+  without exact-alarm permission. Nothing OS controls display priority relative to Glyph Toys and AOD.
 - **Glyph Matrix SDK:** Nothing's official [kit](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit)
   ships only as an AAR, so it's committed in `app/libs/` with its [EULA](app/libs/GLYPH_SDK_LICENSE.md).
   Commercial use needs Nothing's written permission. No API key is needed on Android 16.
@@ -67,12 +91,17 @@ adb shell run-as com.madebygps.dothabits cat files/background-sync.log
 - The single-habit widget on the home screen
 - Timer pause/resume, session limits, notification Pause, background completion after process death, and restart review
 - One-minute timer controls and live goal/history edits retaining the running session's deadline
+- Debug Live Update recognized by system Glyph Progress; user confirmed locked-screen display,
+  temporary Clock override via button, and automatic return to the AOD clock at probe completion
+- Production timer Live Update promoted by the OS; user confirmed toy start, locked-screen progress,
+  pause/resume, completion alert and progress removal
 
 ## Not yet verified on device
 
 - Habit toy's physical LED output
 - Glyph Toys on AOD
 - Battery use over a full day
+- Live timer progress reliability over longer background sessions and process eviction
 
 ## License
 

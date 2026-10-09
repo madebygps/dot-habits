@@ -13,6 +13,7 @@ import com.madebygps.dothabits.MainActivity
 import com.madebygps.dothabits.R
 import com.madebygps.dothabits.domain.Habit
 import com.madebygps.dothabits.domain.TimerMath
+import com.madebygps.dothabits.domain.TimerProgress
 import com.madebygps.dothabits.domain.TodaySnapshot
 
 object Notifications {
@@ -55,17 +56,39 @@ object Notifications {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-    /**
-     * Ongoing timer notification counting down the current session. The system Chronometer ticks
-     * on its own, so no service or wake-ups are needed while a timer runs; state lives in Room.
-     */
+    private const val TIMER_PREFS = "timer_notifications"
+    private const val DISMISSED_RUN = "dismissed_run"
+
+    fun dismissTimer(context: Context, runId: Long) {
+        context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+            .putLong(DISMISSED_RUN, runId).apply()
+    }
+
+    /** The system owns the countdown; progress refreshes opportunistically without waking the phone. */
     @Suppress("MissingPermission")
-    fun updateTimer(context: Context, snapshot: TodaySnapshot) {
+    fun updateTimer(
+        context: Context,
+        snapshot: TodaySnapshot,
+        runId: Long?,
+        sessionEndMs: Long?,
+        runLimitSeconds: Long?,
+    ) {
         val nm = NotificationManagerCompat.from(context)
         val running = snapshot.habits.firstOrNull { it.timerRunning }
-        if (running == null || !canPost(context)) {
+        val dismissed = runId != null && context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE)
+            .getLong(DISMISSED_RUN, -1L) == runId
+        if (running == null || runId == null || dismissed || !canPost(context)) {
             nm.cancel(ID_TIMER)
         } else {
+            val nowMs = System.currentTimeMillis()
+            val endMs = running.timerEndsAt?.toEpochMilli() ?: sessionEndMs ?: (nowMs + running.sessionRemaining * 1_000L)
+            val progress = requireNotNull(
+                TimerProgress.from(
+                    running,
+                    runLimitSeconds ?: running.habit.sessionSeconds,
+                    ((endMs - nowMs).coerceAtLeast(0) + 999L) / 1_000L,
+                ),
+            )
             val pause = PendingIntent.getBroadcast(
                 context, 1,
                 Intent(context, ActionReceiver::class.java).setAction(ActionReceiver.ACTION_PAUSE_TIMER)
@@ -73,6 +96,12 @@ object Notifications {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             val h = running.habit
+            val dismiss = PendingIntent.getBroadcast(
+                context, runId.toInt(),
+                Intent(context, ActionReceiver::class.java).setAction(ActionReceiver.ACTION_DISMISS_TIMER)
+                    .putExtra(ActionReceiver.EXTRA_RUN_ID, runId),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
             val goal = TimerMath.formatDuration(h.dailyGoalUnits)
             val text = if (h.sessions > 1) {
                 val n = (TimerMath.sessionsDone(running.value, h.sessionSeconds, h.sessions) + 1).coerceAtMost(h.sessions)
@@ -82,14 +111,22 @@ object Notifications {
                 .setSmallIcon(R.drawable.ic_stat_dot)
                 .setContentTitle(h.name)
                 .setContentText(text)
+                .setStyle(
+                    NotificationCompat.ProgressStyle()
+                        .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(TimerProgress.MAX)))
+                        .setProgress(progress.elapsed),
+                )
+                .setRequestPromotedOngoing(true)
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
-                .setWhen(running.timerEndsAt?.toEpochMilli() ?: (System.currentTimeMillis() + running.sessionRemaining * 1000))
+                .setWhen(endMs)
+                .setTimeoutAfter((endMs - System.currentTimeMillis()).coerceAtLeast(1L))
                 .setShowWhen(true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
                 .setContentIntent(openApp(context, running.habit.id))
+                .setDeleteIntent(dismiss)
                 .addAction(0, context.getString(R.string.pause), pause)
                 .build()
             nm.notify(ID_TIMER, n)

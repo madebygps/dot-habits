@@ -34,7 +34,7 @@ object Refresh {
             val snapshotMs = SystemClock.elapsedRealtime() - phaseStarted
             phase = "notification"
             val notificationStarted = SystemClock.elapsedRealtime()
-            Notifications.updateTimer(app, snapshot)
+            TimerNotificationUpdater.refresh(app)
             val notificationMs = SystemClock.elapsedRealtime() - notificationStarted
             phase = "alarms"
             val alarmsStarted = SystemClock.elapsedRealtime()

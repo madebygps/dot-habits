@@ -1,6 +1,7 @@
 package com.madebygps.dothabits.ui
 
 import android.Manifest
+import android.app.NotificationManager
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -50,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -58,6 +60,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import com.madebygps.dothabits.data.HcAvailability
+import com.madebygps.dothabits.R
 import com.madebygps.dothabits.data.HighlightPalette
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.glyph.GlyphSupport
@@ -84,10 +87,14 @@ fun SettingsScreen(vm: MainViewModel) {
     val glyphHabit = ui.snapshot.glyphHabit(settings.glyphHabitId)
 
     var canNotify by remember { mutableStateOf(Notifications.canPost(context)) }
+    var canPromote by remember {
+        mutableStateOf(context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications())
+    }
     var canExact by remember { mutableStateOf(Alarms.canExact(context)) }
     var toysManager by remember { mutableStateOf(GlyphSupport.canOpenToysManager(context)) }
     LifecycleResumeEffect(Unit) {
         canNotify = Notifications.canPost(context)
+        canPromote = context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
         canExact = Alarms.canExact(context)
         toysManager = GlyphSupport.canOpenToysManager(context)
         vm.refreshSteps()
@@ -191,6 +198,29 @@ fun SettingsScreen(vm: MainViewModel) {
             }
 
             Divider()
+            Header("GLYPH PROGRESS")
+            PermRow(
+                stringResource(R.string.glyph_progress_title),
+                stringResource(
+                    when {
+                        !canNotify -> R.string.glyph_progress_notifications_off
+                        !canPromote -> R.string.glyph_progress_live_off
+                        else -> R.string.glyph_progress_live_on
+                    },
+                ),
+                "MANAGE",
+            ) {
+                context.startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                )
+            }
+            Text(
+                stringResource(R.string.glyph_progress_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = Palette.Muted,
+            )
+
+            Divider()
             Header("REMINDERS")
             PermRow(
                 "Notifications",
@@ -242,6 +272,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     Text("Shows the selected habit's icon and progress.")
                     Text("TIMERS", style = MaterialTheme.typography.labelSmall)
                     Text("Long-press to start or pause. Hold for 2 seconds to switch timers.")
+                    Text(stringResource(R.string.glyph_progress_toy_help))
                 }
             },
             confirmButton = { TextButton(onClick = { showToyHelp = false }) { Text("OK") } },

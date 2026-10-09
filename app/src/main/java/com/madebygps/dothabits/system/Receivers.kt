@@ -3,6 +3,7 @@ package com.madebygps.dothabits.system
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.madebygps.dothabits.domain.ReminderPlanner
 import com.madebygps.dothabits.dotApp
 import kotlinx.coroutines.launch
@@ -45,9 +46,15 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** Notification actions (pause timer). */
+/** Notification actions (pause timer or hide this run's progress). */
 class ActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_DISMISS_TIMER) {
+            val runId = intent.getLongExtra(EXTRA_RUN_ID, -1)
+            if (runId < 0) Log.w("DotHabitsTimer", "Dismiss action missing timer run id")
+            else Notifications.dismissTimer(context, runId)
+            return
+        }
         if (intent.action != ACTION_PAUSE_TIMER) return
         val id = intent.getLongExtra(EXTRA_HABIT_ID, -1)
         val pending = goAsync()
@@ -59,6 +66,8 @@ class ActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_PAUSE_TIMER = "com.madebygps.dothabits.PAUSE_TIMER"
         const val EXTRA_HABIT_ID = "habit_id"
+        const val ACTION_DISMISS_TIMER = "com.madebygps.dothabits.DISMISS_TIMER"
+        const val EXTRA_RUN_ID = "run_id"
     }
 }
 

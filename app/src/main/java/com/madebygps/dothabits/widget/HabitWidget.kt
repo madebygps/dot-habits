@@ -1,6 +1,8 @@
 package com.madebygps.dothabits.widget
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,13 +58,18 @@ class HabitWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val app = context.dotApp
-        val data = app.repository.raw.first()
-        val snapshot = app.repository.snapshot(data)
-        val density = context.resources.displayMetrics.density
-        provideContent {
-            val habitId = currentState<Preferences>()[HABIT_ID]
-            Content(snapshot, habitId, density)
+        val started = SystemClock.elapsedRealtime()
+        try {
+            val app = context.dotApp
+            val data = app.repository.raw.first()
+            val snapshot = app.repository.snapshot(data)
+            val density = context.resources.displayMetrics.density
+            provideContent {
+                val habitId = currentState<Preferences>()[HABIT_ID]
+                Content(snapshot, habitId, density)
+            }
+        } finally {
+            Log.i("DotHabitsWidget", "widget=habit id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
         }
     }
 

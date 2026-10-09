@@ -23,7 +23,7 @@ class DotApp : Application() {
     val settings: SettingsStore by lazy { SettingsStore(this) }
     val repository: HabitRepository by lazy {
         HabitRepository(database.dao(), settings, contentResolver).also { repo ->
-            repo.onDataChanged = { Refresh.afterDataChange(this) }
+            repo.onDataChanged = { Refresh.afterDataChange(this, reason = "repository-write") }
             repo.onSessionsFinished = { ids ->
                 val snap = repo.currentSnapshot()
                 ids.distinct().forEach { id ->
@@ -44,7 +44,6 @@ class DotApp : Application() {
             repository.reconcileAfterBoot()
             repository.finishElapsedSessions()
             repository.touchAlive()
-            Refresh.afterDataChange(this@DotApp)
         }
     }
 }

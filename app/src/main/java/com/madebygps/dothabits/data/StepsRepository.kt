@@ -7,6 +7,7 @@ import android.health.connect.HealthConnectManager
 import android.os.Build
 import android.os.OutcomeReceiver
 import android.os.ext.SdkExtensions
+import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.HealthConnectFeatures
 import androidx.health.connect.client.permission.HealthPermission
@@ -128,13 +129,20 @@ class StepsRepository(private val context: Context) {
             ).mapNotNull { g ->
                 g.result[StepsRecord.COUNT_TOTAL]?.let { g.startTime.toLocalDate() to it }
             }.toMap()
-        } catch (_: SecurityException) {
+        } catch (e: SecurityException) {
+            Log.w(TAG, "step read denied days=$days", e)
             null // permission revoked, or background read not allowed
-        } catch (_: IllegalStateException) {
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "step read unavailable days=$days", e)
             null
-        } catch (_: android.os.RemoteException) {
+        } catch (e: android.os.RemoteException) {
+            Log.w(TAG, "step read remote failure days=$days", e)
             null
         }
+    }
+
+    private companion object {
+        const val TAG = "DotHabitsSteps"
     }
 }
 

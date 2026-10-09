@@ -32,6 +32,13 @@ Short press cycles enabled toys using Nothing's system controls. The habit selec
 if that habit is deleted, pick another (the toy never silently substitutes one). Missing step readings
 show "NO STEP DATA" one word at a time. Allow step counting under **Settings › Steps**.
 
+Background sync writes bounded, non-personal diagnostics for the latest 48 hours. On a development build:
+
+```sh
+adb logcat -s DotHabitsWorker DotHabitsRefresh DotHabitsSteps DotHabitsWidget
+adb shell run-as com.madebygps.dothabits cat files/background-sync.log
+```
+
 ## Good to know
 
 - **Navigation:** use Android's back gesture or system back button. In-app screen changes use a short fade without shrinking.

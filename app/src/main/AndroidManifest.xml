@@ -34,6 +34,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -44,7 +45,8 @@
         <!-- Health Connect privacy policy / rationale -->
         <activity
             android:name=".ui.PrivacyActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
@@ -107,13 +109,14 @@
             android:name=".widget.HabitWidgetConfigActivity"
             android:exported="true"
             android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
             android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
 
-        <!-- Glyph Toy (Nothing Phone (3)). -->
+        <!-- Timer Glyph Toy (Nothing Phone (3)); keep the component for existing toy selections. -->
         <service
             android:name=".glyph.GlyphToyService"
             android:exported="true"
@@ -133,6 +136,29 @@
             <meta-data
                 android:name="com.nothing.glyph.toy.longpress"
                 android:value="1" />
+            <meta-data
+                android:name="com.nothing.glyph.toy.aod_support"
+                android:value="1" />
+        </service>
+        <service
+            android:name=".glyph.HabitGlyphToyService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="com.nothing.glyph.TOY" />
+            </intent-filter>
+            <meta-data
+                android:name="com.nothing.glyph.toy.name"
+                android:resource="@string/habit_toy_name" />
+            <meta-data
+                android:name="com.nothing.glyph.toy.image"
+                android:resource="@drawable/glyph_habit_preview" />
+            <meta-data
+                android:name="com.nothing.glyph.toy.summary"
+                android:resource="@string/habit_toy_summary" />
+            <meta-data
+                android:name="com.nothing.glyph.toy.longpress"
+                android:value="0" />
             <meta-data
                 android:name="com.nothing.glyph.toy.aod_support"
                 android:value="1" />

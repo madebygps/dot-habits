@@ -205,6 +205,7 @@ private fun Stat(label: String, value: String) {
 private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfWeek, onDay: (LocalDate) -> Unit) {
     var month by remember { mutableStateOf(YearMonth.from(today)) }
     val highlight = LocalHighlight.current
+    val colors = LocalDotColors.current
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
@@ -244,7 +245,7 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
                                 Modifier.size(34.dp).let { if (clickable) it.clickable(onClickLabel = date.format(dayFmt)) { onDay(date) } else it },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Canvas(Modifier.size(26.dp)) { drawDayMark(status, highlight) }
+                                Canvas(Modifier.size(26.dp)) { drawDayMark(status, highlight, colors) }
                                 Text(
                                     "${date.dayOfMonth}",
                                     style = MaterialTheme.typography.labelSmall,
@@ -394,20 +395,25 @@ private fun HelpDialog(t: HabitToday, onDismiss: () -> Unit) {
 
 @Composable
 private fun LegendRow(status: DayStatus, highlight: androidx.compose.ui.graphics.Color, label: String) {
+    val colors = LocalDotColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Canvas(Modifier.size(18.dp)) { drawDayMark(status, highlight) }
+        Canvas(Modifier.size(18.dp)) { drawDayMark(status, highlight, colors) }
         Spacer(Modifier.width(10.dp))
         Text(label, style = MaterialTheme.typography.bodySmall)
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDayMark(status: DayStatus, highlight: androidx.compose.ui.graphics.Color) {
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDayMark(
+    status: DayStatus,
+    highlight: androidx.compose.ui.graphics.Color,
+    colors: DotColors,
+) {
     val rad = size.minDimension / 2
     when (status) {
         DayStatus.MET -> drawCircle(highlight, rad)
         DayStatus.PARTIAL -> drawCircle(highlight, rad - 2.dp.toPx(), style = Stroke(2.dp.toPx()))
-        DayStatus.MISSED -> drawCircle(Palette.Dim, rad - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
-        DayStatus.PENDING -> drawCircle(Palette.Text, rad - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
+        DayStatus.MISSED -> drawCircle(colors.dim, rad - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
+        DayStatus.PENDING -> drawCircle(colors.text, rad - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
         else -> Unit
     }
 }

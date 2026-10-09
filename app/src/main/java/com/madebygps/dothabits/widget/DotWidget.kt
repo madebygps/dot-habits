@@ -2,13 +2,10 @@ package com.madebygps.dothabits.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.Image
-import androidx.glance.ImageProvider
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -32,15 +29,11 @@ import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
 import com.madebygps.dothabits.MainActivity
 import com.madebygps.dothabits.data.HABITS_PER_PAGE
 import com.madebygps.dothabits.domain.TodaySnapshot
 import com.madebygps.dothabits.dotApp
 import kotlinx.coroutines.flow.first
-
-private val White = ColorProvider(Color(0xFFF2F2F2))
-private val Grey = ColorProvider(Color(0xFF8A8A8A))
 
 /**
  * How six habits are arranged for a given widget size. Square-ish sizes (the default 2×2) use
@@ -91,27 +84,26 @@ class DotWidget : GlanceAppWidget() {
         val app = context.dotApp
         val data = app.repository.raw.first()
         val snapshot = app.repository.snapshot(data)
-        val highlight = data.settings.highlight.toInt()
         val density = context.resources.displayMetrics.density
-        provideContent { Content(snapshot, highlight, density) }
+        provideContent { Content(snapshot, density) }
     }
 
     @Composable
-    private fun Content(snapshot: TodaySnapshot, highlight: Int, density: Float) {
+    private fun Content(snapshot: TodaySnapshot, density: Float) {
         val size = LocalSize.current
         val grid = WidgetGrid.forSize(size.width.value, size.height.value)
         val habits = snapshot.habits.take(HABITS_PER_PAGE)
         val px = (grid.ringDp * density).toInt().coerceIn(48, 256)
         Box(
             modifier = GlanceModifier.fillMaxSize()
-                .background(ColorProvider(Color.Black))
+                .background(WidgetColors.background)
                 .cornerRadius(28.dp)
                 .padding(10.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             contentAlignment = Alignment.Center,
         ) {
             if (habits.isEmpty()) {
-                Text("DOT HABITS", style = caption(12, White))
+                Text("DOT HABITS", style = caption(12, WidgetColors.foreground))
                 return@Box
             }
             Column(modifier = GlanceModifier.fillMaxSize()) {
@@ -129,12 +121,8 @@ class DotWidget : GlanceAppWidget() {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (t != null) {
-                                    Image(
-                                        ImageProvider(RingBitmaps.habit(t, px, highlight)),
-                                        t.habit.name,
-                                        modifier = GlanceModifier.size(grid.ringDp.dp),
-                                    )
-                                    if (grid.labels) Text(t.habit.name.uppercase(), style = caption(9, Grey), maxLines = 1)
+                                    HabitRingImage(t, grid.ringDp.dp, px)
+                                    if (grid.labels) Text(t.habit.name.uppercase(), style = caption(9, WidgetColors.dim), maxLines = 1)
                                 }
                             }
                         }
@@ -144,7 +132,7 @@ class DotWidget : GlanceAppWidget() {
         }
     }
 
-    private fun caption(sp: Int, color: ColorProvider) =
+    private fun caption(sp: Int, color: androidx.glance.unit.ColorProvider) =
         TextStyle(color = color, fontSize = sp.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center)
 }
 

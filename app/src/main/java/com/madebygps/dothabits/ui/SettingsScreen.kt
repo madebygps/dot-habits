@@ -16,17 +16,24 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.health.connect.client.PermissionController
@@ -70,6 +78,10 @@ fun SettingsScreen(vm: MainViewModel) {
     val ui by vm.ui.collectAsStateWithLifecycle()
     val settings = ui.raw?.settings ?: return
     val steps by vm.steps.collectAsStateWithLifecycle()
+    var showToyHelp by remember { mutableStateOf(false) }
+    var showHabitPicker by remember { mutableStateOf(false) }
+    val habits = ui.raw?.habits.orEmpty().sortedBy { it.position }
+    val glyphHabit = ui.snapshot.glyphHabit(settings.glyphHabitId)
 
     var canNotify by remember { mutableStateOf(Notifications.canPost(context)) }
     var canExact by remember { mutableStateOf(Alarms.canExact(context)) }
@@ -81,8 +93,6 @@ fun SettingsScreen(vm: MainViewModel) {
         vm.refreshSteps()
         onPauseOrDispose { }
     }
-
-    fun refreshAll() = scope.launch { Refresh.afterDataChange(app) }
 
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         canNotify = Notifications.canPost(context)
@@ -151,22 +161,33 @@ fun SettingsScreen(vm: MainViewModel) {
             })
 
             Divider()
-            Header("GLYPH")
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Header("TOYS")
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = { showToyHelp = true },
+                    modifier = Modifier.size(40.dp),
+                ) { Text("?") }
+            }
             PermRow(
-                "Glyph Toy",
+                "Toys",
                 when {
                     !GlyphSupport.isPhone3() -> "Needs Nothing Phone (3)"
-                    toysManager -> "Timer for timed habits"
-                    else -> "Add it in Settings › Glyph Interface › Glyph Toys"
+                    toysManager -> "Habit and Timers"
+                    else -> "Open Nothing settings to enable toys"
                 },
                 if (GlyphSupport.isPhone3() && toysManager) "SET UP" else null,
             ) { GlyphSupport.openToysManager(context) }
             if (GlyphSupport.isPhone3()) {
-                Text(
-                    "Long-press: start or pause · Hold 2 s: next timer",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Palette.Muted,
-                )
+                PermRow(
+                    "Displayed habit",
+                    glyphHabit?.habit?.name ?: when {
+                        habits.isEmpty() -> "No habits yet"
+                        settings.glyphHabitId != null -> "Selected habit was deleted"
+                        else -> "Not selected"
+                    },
+                    if (habits.isEmpty()) null else "PICK",
+                ) { showHabitPicker = true }
             }
 
             Divider()
@@ -190,7 +211,6 @@ fun SettingsScreen(vm: MainViewModel) {
 
             Divider()
             Header("HABIT ORDER")
-            val habits = ui.raw?.habits.orEmpty().sortedBy { it.position }
             habits.forEachIndexed { i, h ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DotIcon(h.icon, Modifier.size(20.dp))
@@ -210,6 +230,73 @@ fun SettingsScreen(vm: MainViewModel) {
             )
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if (showToyHelp) {
+        AlertDialog(
+            onDismissRequest = { showToyHelp = false },
+            title = { Text("Glyph Toys") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("HABIT", style = MaterialTheme.typography.labelSmall)
+                    Text("Shows the selected habit's icon and progress.")
+                    Text("TIMERS", style = MaterialTheme.typography.labelSmall)
+                    Text("Long-press to start or pause. Hold for 2 seconds to switch timers.")
+                }
+            },
+            confirmButton = { TextButton(onClick = { showToyHelp = false }) { Text("OK") } },
+        )
+    }
+    if (showHabitPicker) {
+        fun pickHabit(id: Long?) {
+            scope.launch {
+                app.settings.setGlyphHabit(id)
+                showHabitPicker = false
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showHabitPicker = false },
+            title = { Text("Displayed habit") },
+            text = {
+                LazyColumn(Modifier.selectableGroup()) {
+                    item {
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .selectable(
+                                    selected = settings.glyphHabitId == null,
+                                    role = Role.RadioButton,
+                                    onClick = { pickHabit(null) },
+                                )
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = settings.glyphHabitId == null, onClick = null)
+                            Spacer(Modifier.width(10.dp))
+                            Text("No habit selected", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                    items(habits, key = { it.id }) { habit ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .selectable(
+                                    selected = habit.id == settings.glyphHabitId,
+                                    role = Role.RadioButton,
+                                    onClick = { pickHabit(habit.id) },
+                                )
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = habit.id == settings.glyphHabitId, onClick = null)
+                            Spacer(Modifier.width(10.dp))
+                            DotIcon(habit.icon, Modifier.size(20.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(habit.name, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHabitPicker = false }) { Text("CANCEL") } },
+        )
     }
 }
 

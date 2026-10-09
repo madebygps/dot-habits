@@ -84,8 +84,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun undo(entryId: Long) = viewModelScope.launch { repository.undoEntry(entryId) }
 
-    fun toggleTimer(habitId: Long, running: Boolean) = viewModelScope.launch {
-        if (running) repository.pauseTimer(habitId) else repository.startTimer(habitId)
+    fun toggleTimer(habitId: Long) = viewModelScope.launch {
+        repository.toggleTimer(habitId)
     }
 
     fun addExamples() = viewModelScope.launch { repository.addExampleHabits() }

@@ -136,7 +136,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
                 DotIcon(t.habit.icon, Modifier.size(72.dp), if (filled) androidx.compose.ui.graphics.Color.Black else Palette.Text)
             }
             if (t.habit.type == HabitType.TIMED) {
-                PlayPauseButton(t.timerRunning, 54.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id, t.timerRunning) }
+                PlayPauseButton(t.timerRunning, 54.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id) }
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -343,7 +343,7 @@ private fun EditDayDialog(
                     )
                     habit.type == HabitType.TIMED -> {
                         Text("Timer sessions: ${TimerMath.formatDuration(sessionSecs)}", style = MaterialTheme.typography.bodyMedium)
-                        Stepper("Manual minutes", manual / 60, step = 5, min = 0, max = 24 * 60) { manual = it * 60 }
+                        Stepper("Manual minutes", manual / 60, step = 1, min = 0, max = 24 * 60) { manual = it * 60 }
                     }
                     else -> Stepper(if (habit.isNegative) "Slips" else "Completions", manual, step = 1, min = 0, max = 99) { manual = it }
                 }

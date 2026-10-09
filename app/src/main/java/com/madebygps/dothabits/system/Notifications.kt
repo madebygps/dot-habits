@@ -84,7 +84,7 @@ object Notifications {
                 .setContentText(text)
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
-                .setWhen(System.currentTimeMillis() + running.sessionRemaining * 1000)
+                .setWhen(running.timerEndsAt?.toEpochMilli() ?: (System.currentTimeMillis() + running.sessionRemaining * 1000))
                 .setShowWhen(true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -121,6 +121,7 @@ object Notifications {
                 .setSmallIcon(R.drawable.ic_stat_dot)
                 .setContentTitle(
                     if (all) context.getString(R.string.goal_done_title, habit.name)
+                    else if (done == 0) context.getString(R.string.session_finished_title, habit.name)
                     else context.getString(R.string.session_done_title, habit.name, done, habit.sessions),
                 )
                 .setContentText(

@@ -18,7 +18,13 @@ object Refresh {
     private const val TAG = "DotHabitsRefresh"
     private val lock = Mutex()
 
-    suspend fun afterDataChange(context: Context, reason: String = "data-change") = lock.withLock {
+    suspend fun afterDataChange(context: Context, reason: String = "data-change") {
+        // Settle expired runs before a snapshot can cancel their pending completion alarm.
+        context.dotApp.repository.finishElapsedSessions(refreshSurfaces = false)
+        refreshSurfaces(context, reason)
+    }
+
+    private suspend fun refreshSurfaces(context: Context, reason: String) = lock.withLock {
         val app = context.dotApp
         val started = SystemClock.elapsedRealtime()
         var phase = "snapshot"

@@ -21,7 +21,6 @@ import com.nothing.ketchum.GlyphMatrixManager
 import com.nothing.ketchum.GlyphToy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -40,8 +39,8 @@ import kotlinx.coroutines.launch
  *
  * Holding past [HOLD_TO_SWITCH_MS] instead switches to the next timed habit (measured between the
  * documented action_down / action_up events; tested on a Phone (3): change arrives ~0.5 s after
- * action_down, action_up on release). The action is decided on release, or at the threshold for a
- * switch, so a hold never also toggles. A press without EVENT_CHANGE is ignored, as the system
+ * action_down, action_up on release). The action is decided on release so a hold never also
+ * toggles. A press without EVENT_CHANGE is ignored, as the system
  * didn't treat it as a long press. Switching is disabled while a timer runs. It never logs
  * completions directly; time only counts while a timer runs, exactly as in the app.
  * EVENT_AOD arrives once a minute when chosen as the Always-on Glyph Toy.
@@ -62,8 +61,6 @@ class GlyphToyService : Service() {
     // Button state, touched only on the main looper.
     private var downAt = 0L
     private var changeSeen = false
-    private var switched = false
-    private var holdJob: Job? = null
 
     private val handler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -109,12 +106,6 @@ class GlyphToyService : Service() {
     private fun onDown() {
         downAt = SystemClock.elapsedRealtime()
         changeSeen = false
-        switched = false
-        holdJob?.cancel()
-        holdJob = scope?.launch {
-            delay(HOLD_TO_SWITCH_MS)
-            handler.post { if (downAt != 0L && changeSeen) { switched = true; switchTimer() } }
-        }
     }
 
     private fun onChange() {
@@ -129,8 +120,10 @@ class GlyphToyService : Service() {
     }
 
     private fun onUp() {
-        holdJob?.cancel()
-        if (downAt != 0L && changeSeen && !switched) toggleTimer()
+        if (downAt != 0L && changeSeen) {
+            if (SystemClock.elapsedRealtime() - downAt >= HOLD_TO_SWITCH_MS) switchTimer()
+            else toggleTimer()
+        }
         downAt = 0L
         changeSeen = false
     }
@@ -210,8 +203,9 @@ class GlyphToyService : Service() {
                 if (previous?.running == true && t?.habitId != previous?.habitId || (previous?.running == true && t?.running == false)) {
                     // The timer stopped; if it was because the session ended, persist it and celebrate.
                     val prev = previous!!
-                    val finishedNow = snap.habits.firstOrNull { it.habit.id == prev.habitId }
-                        ?.let { TimerMath.sessionsDone(it.value, it.habit.sessionSeconds, it.habit.sessions) > prev.sessionsDone } == true
+                    val finishedNow = prev.endsAt?.let { !java.time.Instant.now().isBefore(it) }
+                        ?: (snap.habits.firstOrNull { it.habit.id == prev.habitId }
+                            ?.let { TimerMath.sessionsDone(it.value, it.habit.sessionSeconds, it.habit.sessions) > prev.sessionsDone } == true)
                     if (finishedNow) {
                         app.repository.finishElapsedSessions()
                         celebrate()

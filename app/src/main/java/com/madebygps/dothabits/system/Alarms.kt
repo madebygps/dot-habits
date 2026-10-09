@@ -58,7 +58,7 @@ object Alarms {
 
         // End of the running timer's session
         val running = snapshot.habits.firstOrNull { it.timerRunning }
-        val goalAt = running?.let { Instant.now().plusSeconds(it.sessionRemaining) }
+        val goalAt = running?.let { it.timerEndsAt ?: Instant.now().plusSeconds(it.sessionRemaining) }
         val goalPi = pi(context, RC_GOAL, AlarmReceiver.ACTION_TIMER_GOAL, running?.habit?.id ?: 0)
         if (goalAt == null) am.cancel(goalPi)
         else if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), goalPi)

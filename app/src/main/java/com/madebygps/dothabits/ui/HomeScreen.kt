@@ -130,7 +130,7 @@ fun HomeScreen(
                         showAdd = showAdd,
                         onHold = { vm.hold(it) },
                         onOpen = onOpen,
-                        onToggleTimer = { t -> vm.toggleTimer(t.habit.id, t.timerRunning) },
+                        onToggleTimer = { t -> vm.toggleTimer(t.habit.id) },
                         onAdd = onAdd,
                     )
                 }
@@ -334,6 +334,7 @@ fun PlayPauseButton(running: Boolean, size: Dp, modifier: Modifier = Modifier, o
             .clip(CircleShape)
             .background(if (running) highlight else Palette.Black)
             .border(2.dp, highlight, CircleShape)
+            .semantics { contentDescription = if (running) "Pause timer" else "Start timer" }
             .clickable(role = Role.Button, onClickLabel = if (running) "Pause timer" else "Start timer", onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

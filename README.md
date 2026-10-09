@@ -50,6 +50,11 @@ adb shell run-as com.madebygps.dothabits cat files/background-sync.log
   so there is no earlier history. Steps sync about every 15 minutes in the background and every minute while the app is open.
 - **Timers** keep running when the app is closed or the screen is locked, and split at midnight. After a reboot, a
   timer that was running asks you to review its time instead of guessing.
+  Session lengths range from 1 to 300 minutes in one-minute steps; manual history also uses one-minute steps.
+  A running session keeps its original deadline when you edit its goal or history, or when the day changes.
+  Switching a habit away from Timer pauses its run. While visible, the app confirms running time every second
+  so restart recovery retains the latest observed time; time while asleep remains conservative.
+  Short pause/resume runs accumulate before rounding to whole seconds.
 - **Glyph Matrix SDK:** Nothing's official [kit](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit)
   ships only as an AAR, so it's committed in `app/libs/` with its [EULA](app/libs/GLYPH_SDK_LICENSE.md).
   Commercial use needs Nothing's written permission. No API key is needed on Android 16.
@@ -60,13 +65,14 @@ adb shell run-as com.madebygps.dothabits cat files/background-sync.log
 - Both toys appear separately in Nothing's toy manager
 - Habit selection saves from the in-app picker and survives an app restart
 - The single-habit widget on the home screen
+- Timer pause/resume, session limits, notification Pause, background completion after process death, and restart review
+- One-minute timer controls and live goal/history edits retaining the running session's deadline
 
 ## Not yet verified on device
 
 - Habit toy's physical LED output
 - Glyph Toys on AOD
 - Battery use over a full day
-- Reboot with a timer running
 
 ## License
 

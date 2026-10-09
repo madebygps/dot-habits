@@ -11,6 +11,7 @@
     <string name="review_title">Timer interrupted by restart</string>
     <string name="review_text">%1$s: the phone restarted while timing. Choose how much time to keep.</string>
     <string name="session_done_title" tools:ignore="PluralsCandidate">%1$s · session %2$d of %3$d done</string>
+    <string name="session_finished_title">%1$s · session finished</string>
     <string name="session_done_text">Timer stopped. Start the next session when you\'re ready.</string>
     <string name="goal_done_title">%1$s done for today</string>
     <string name="goal_done_text">All %1$s logged.</string>

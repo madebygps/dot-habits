@@ -14,7 +14,7 @@ import androidx.glance.unit.ColorProvider as GlanceColorProvider
 import com.madebygps.dothabits.domain.HabitToday
 
 internal object WidgetColors {
-    val background = dayNight(Color(0xD9F1F1F1), Color(0xD91B1B1B))
+    val background = dayNight(Color(0xFFF1F1F1), Color(0xFF181818))
     val foreground = dayNight(Color.Black, Color(0xFFF2F2F2))
     val track = dayNight(Color(0xFF9A9A96), Color(0xFF454545))
     val dim = dayNight(Color(0xFF666663), Color(0xFF8A8A8A))

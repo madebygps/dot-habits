@@ -69,6 +69,9 @@ data class ActiveTimer(
  * All three surfaces render from the same [TodaySnapshot] so they cannot disagree.
  */
 data class TodaySnapshot(val date: LocalDate, val habits: List<HabitToday>, val activeTimer: ActiveTimer?) {
+    /** Never substitute another habit when the user has not picked one or it was deleted. */
+    fun glyphHabit(id: Long?): HabitToday? = habits.firstOrNull { it.habit.id == id }
+
     val dueCount: Int get() = habits.count { it.countsTowardToday }
     val doneCount: Int get() = habits.count { it.countsTowardToday && it.isComplete }
     val overallFraction: Float get() = if (dueCount == 0) 0f else doneCount.toFloat() / dueCount

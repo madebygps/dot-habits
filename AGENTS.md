@@ -21,7 +21,8 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - Never commit keys or secrets. Glyph SDK EULA §2.2: no commercial use (paid app, ads, IAP) without written permission from Nothing.
 - Local-first: no `INTERNET` permission, backend, account, analytics or ads.
 - Widgets are **display-only**: the whole widget opens the app; no completion controls.
-- The Glyph Toy is timers only. Long-press (`EVENT_CHANGE`) starts/pauses the shown timer (user's explicit
+- The Habit Glyph Toy is display-only: choose its habit in app Settings; never log completions or control timers.
+  The Timers Glyph Toy is timers only. Long-press (`EVENT_CHANGE`) starts/pauses the shown timer (user's explicit
   choice); it must never log completions directly. Short press is system toy cycling — don't intercept it.
   Holding ≥2 s (timed between documented `action_down`/`action_up`) switches timers; decide on release so a hold never also toggles.
 - Timed habits are sessions × minutes; each run carries `limitSeconds` and stops itself at the session end.

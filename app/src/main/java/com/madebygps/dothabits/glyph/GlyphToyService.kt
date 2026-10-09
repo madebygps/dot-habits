@@ -3,7 +3,6 @@ package com.madebygps.dothabits.glyph
 import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
-import android.graphics.Color
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -14,16 +13,11 @@ import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.os.SystemClock
 import android.util.Log
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.set
 import com.madebygps.dothabits.domain.ActiveTimer
 import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.dotApp
 import com.nothing.ketchum.Glyph
-import com.nothing.ketchum.GlyphException
-import com.nothing.ketchum.GlyphMatrixFrame
 import com.nothing.ketchum.GlyphMatrixManager
-import com.nothing.ketchum.GlyphMatrixObject
 import com.nothing.ketchum.GlyphToy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -245,24 +239,7 @@ class GlyphToyService : Service() {
     }
 
     private fun push(frame: IntArray) {
-        val manager = gm ?: return
-        val size = GlyphFrames.SIZE
-        val bmp = createBitmap(size, size)
-        for (i in frame.indices) {
-            val v = frame[i]
-            bmp[i % size, i / size] = Color.argb(255, v, v, v)
-        }
-        try {
-            val obj = GlyphMatrixObject.Builder()
-                .setImageSource(bmp)
-                .setPosition(0, 0)
-                .setScale(100)
-                .build()
-            val rendered = GlyphMatrixFrame.Builder().addTop(obj).build(applicationContext).render()
-            manager.setMatrixFrame(rendered)
-        } catch (e: GlyphException) {
-            Log.w(TAG, "setMatrixFrame failed", e)
-        }
+        gm?.pushMonochromeFrame(applicationContext, frame)
     }
 
     private companion object {

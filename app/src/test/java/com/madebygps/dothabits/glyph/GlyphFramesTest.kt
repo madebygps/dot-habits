@@ -1,9 +1,12 @@
 package com.madebygps.dothabits.glyph
 
 import com.madebygps.dothabits.domain.Habit
+import com.madebygps.dothabits.domain.DotFont
+import com.madebygps.dothabits.domain.DotIcons
 import com.madebygps.dothabits.domain.HabitHistory
 import com.madebygps.dothabits.domain.HabitType
 import com.madebygps.dothabits.domain.SessionState
+import com.madebygps.dothabits.domain.Schedule
 import com.madebygps.dothabits.domain.SnapshotBuilder
 import com.madebygps.dothabits.domain.TimerSession
 import com.madebygps.dothabits.domain.TodaySnapshot
@@ -148,5 +151,91 @@ class GlyphFramesTest {
         assertEquals(2, (7..17).count { two[21 * 25 + it] != 0 })
         assertEquals(255, two[21 * 25 + 11])
         assertFalse(GlyphFrames.picked(snap(deepWork to 0L, read to 0L)).contentEquals(two))
+    }
+
+    @Test fun habitSelectionDoesNotFollowActiveTimerOrFallBack() {
+        val s = snap(deepWork to 0L, read to 0L, running = deepWork)
+        assertEquals(read.id, s.glyphHabit(read.id)!!.habit.id)
+        assertEquals(null, s.glyphHabit(null))
+        assertEquals(null, s.glyphHabit(999L))
+        val empty = GlyphFrames.habit(TodaySnapshot.Empty, null)
+        assertTrue(empty.contentEquals(GlyphFrames.habit(s, 999L)))
+        assertTrue(empty.contentEquals(GlyphFrames.habit(s, null)))
+        assertTrue(empty.any { it != 0 })
+    }
+
+    @Test fun habitShowsSelectedIconAndProgressEvenWhenComplete() {
+        val s = snap(deepWork to 50 * 60L, read to 3600L)
+        val half = GlyphFrames.habit(s, deepWork.id)
+        assertEquals(4, segmentCount(half))
+        assertEquals(0.5f, litFraction(half), 0.06f)
+        assertEquals(1f, litFraction(GlyphFrames.habit(s, read.id)), 0.001f)
+        assertFalse(half.contentEquals(GlyphFrames.habit(s, read.id)))
+        val book = GlyphFrames.habit(s, read.id)
+        DotIcons.bits(read.icon).forEachIndexed { i, on ->
+            assertEquals(if (on) 255 else 0, book[(7 + i / DotIcons.SIZE) * 25 + 7 + i % DotIcons.SIZE])
+        }
+    }
+
+    @Test fun countHabitSegmentsUseSharedSnapshotProgress() {
+        val count = Habit(3, "Meds", "pill", HabitType.COUNT, 2, createdOn = today)
+        val px = GlyphFrames.habit(snap(count to 1L), count.id)
+        assertEquals(2, segmentCount(px))
+        assertEquals(0.5f, litFraction(px), 0.06f)
+    }
+
+    @Test fun weeklyHabitUsesSharedWeeklyProgress() {
+        val weekly = Habit(3, "Read", "book", HabitType.COUNT, 1,
+            schedule = Schedule.timesPerWeek(4), createdOn = today)
+        val px = GlyphFrames.habit(snap(weekly to 2L), weekly.id)
+        assertEquals(4, segmentCount(px))
+        assertEquals(0.5f, litFraction(px), 0.06f)
+    }
+
+    @Test fun avoidAndRestHabitsKeepSnapshotMeaning() {
+        val avoid = Habit(3, "Avoid", "dot", HabitType.COUNT, 1, isNegative = true, createdOn = today)
+        assertEquals(1f, litFraction(GlyphFrames.habit(snap(avoid to 1L), avoid.id)), 0.001f)
+        assertEquals(0f, litFraction(GlyphFrames.habit(snap(avoid to 2L), avoid.id)), 0.001f)
+        val rest = avoid.copy(isNegative = false, schedule = Schedule.weekdays(DayOfWeek.MONDAY))
+        assertEquals(0f, litFraction(GlyphFrames.habit(snap(rest to 0L), rest.id)), 0.001f)
+    }
+
+    @Test fun missingStepDataShowsWordsRatherThanZeroOrCompletion() {
+        val steps = Habit(3, "Walk", "shoe", HabitType.STEPS, 5000, createdOn = today)
+        val missing = SnapshotBuilder.build(
+            listOf(HabitHistory(steps, emptyMap(), stepsAvailableToday = false)),
+            today, DayOfWeek.MONDAY, now,
+        )
+        val words = (0L..2L).map { GlyphFrames.habit(missing, steps.id, it) }
+        words.forEach { assertEquals(0f, litFraction(it), 0.001f) }
+        listOf("NO", "STEP", "DATA").forEachIndexed { page, word ->
+            val left = (25 - DotFont.width(word)) / 2
+            word.forEachIndexed { letter, char ->
+                DotFont.bits(char).forEachIndexed { i, on ->
+                    assertEquals(if (on) 140 else 0,
+                        words[page][(10 + i / DotFont.W) * 25 + left + letter * (DotFont.W + 1) + i % DotFont.W])
+                }
+            }
+            words[page].indices.filter { words[page][it] != 0 }.forEach {
+                assertTrue(GlyphFrames.isLed(it % 25, it / 25))
+            }
+        }
+        assertFalse(words[0].contentEquals(words[1]))
+        assertFalse(words[1].contentEquals(words[2]))
+        assertTrue(words[0].contentEquals(GlyphFrames.habit(missing, steps.id, 3)))
+        assertFalse(words[0].contentEquals(GlyphFrames.habit(snap(steps to 0L), steps.id)))
+        assertEquals(1f, litFraction(GlyphFrames.habit(snap(steps to 5000L), steps.id)), 0.001f)
+    }
+
+    @Test fun habitFramesOnlyUseRealMonochromeLeds() {
+        val s = snap(deepWork to 50 * 60L, read to 0L)
+        listOf(null, 999L, deepWork.id, read.id).forEach { id ->
+            val px = GlyphFrames.habit(s, id)
+            assertEquals(625, px.size)
+            assertTrue(px.all { it in 0..255 })
+            px.indices.filter { px[it] != 0 }.forEach {
+                assertTrue(GlyphFrames.isLed(it % 25, it / 25))
+            }
+        }
     }
 }

@@ -54,6 +54,27 @@ object GlyphFrames {
         return px
     }
 
+    /** The Habit toy is display-only; missing-data words cycle to fit the 25-LED matrix. */
+    fun habit(snapshot: TodaySnapshot, selectedId: Long?, page: Long = 0L): IntArray {
+        val px = IntArray(SIZE * SIZE)
+        val h = snapshot.glyphHabit(selectedId)
+        if (h == null) {
+            text(px, "PICK", 6, PAUSED_TEXT)
+            text(px, "HABIT", 14, PAUSED_TEXT)
+            return px
+        }
+        if (!h.hasData) {
+            ring(px, 0f)
+            text(px, listOf("NO", "STEP", "DATA")[page.mod(3)], 10, PAUSED_TEXT)
+            return px
+        }
+        segmentedRing(px, List(h.segments.coerceAtLeast(1)) { i ->
+            (h.fraction * h.segments.coerceAtLeast(1) - i).coerceIn(0f, 1f)
+        })
+        icon(px, h.habit.icon)
+        return px
+    }
+
     /**
      * Shown briefly after the hold gesture switches timers: the habit's icon (so you can tell
      * which one is selected), its ring and the choice dots.

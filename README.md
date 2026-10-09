@@ -14,7 +14,8 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Statistics:** 30/60/90-day or all-time completion rate, weekly bars and a by-weekday chart.
 - **Reminders** on scheduled days that aren't done yet.
 - **Widgets** (display only): a six-ring grid, and a resizable single-habit widget.
-- **Glyph Toy** for timer habits: long press starts or pauses, hold for 2 s to switch habit.
+- **Glyph Toys:** Habit shows a selected habit's icon and progress (display only); Timers has countdowns,
+  long press to start or pause, and hold for 2 s to switch timer. Enable either or both.
 
 ## Install (development)
 
@@ -25,7 +26,11 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 ./gradlew :app:installDebug
 ```
 
-To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After installing, add the toy in **Settings › Glyph Toy › Set up**, and allow step counting under **Settings › Steps**.
+To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After installing, enable toys in
+**Settings › Glyph › Glyph Toys › Set up** and pick the Habit toy's habit under **Displayed habit**.
+Short press cycles enabled toys using Nothing's system controls. The habit selection survives app restarts;
+if that habit is deleted, pick another (the toy never silently substitutes one). Missing step readings
+show "NO STEP DATA" one word at a time. Allow step counting under **Settings › Steps**.
 
 ## Good to know
 
@@ -44,12 +49,15 @@ To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After ins
 
 ## Verified on device
 
-- Glyph Toy follows the system Glyph brightness
+- Timers Glyph Toy follows the system Glyph brightness
+- Both toys appear separately in Nothing's toy manager
+- Habit selection saves from the in-app picker and survives an app restart
 - The single-habit widget on the home screen
 
 ## Not yet verified on device
 
-- Glyph Toy on AOD
+- Habit toy's physical LED output
+- Glyph Toys on AOD
 - Battery use over a full day
 - Reboot with a timer running
 

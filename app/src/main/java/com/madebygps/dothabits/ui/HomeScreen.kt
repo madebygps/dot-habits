@@ -303,24 +303,38 @@ private fun HabitCell(
                 )
             }
         }
+        CellLabels(
+            name = t.habit.name,
+            caption = caption,
+            ring = ring,
+            captionColor = if (t.timerPaused) highlight else Palette.Muted,
+        )
+    }
+}
+
+@Composable
+private fun CellLabels(name: String, caption: String, ring: Dp, captionColor: Color = Palette.Muted) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(8.dp))
         Text(
-            t.habit.name,
+            name,
             style = MaterialTheme.typography.labelLarge,
             color = Palette.Text,
+            minLines = 1,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(ring + 32.dp),
             textAlign = TextAlign.Center,
         )
-        if (caption.isNotEmpty()) Text(
+        Text(
             caption,
             style = MaterialTheme.typography.labelSmall,
+            color = captionColor,
+            minLines = 1,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(ring + 40.dp),
             textAlign = TextAlign.Center,
-            color = if (t.timerPaused) highlight else Palette.Muted,
         )
     }
 }
@@ -370,9 +384,7 @@ private fun AddCell(ring: Dp, onAdd: () -> Unit) {
         ) {
             Text("+", style = MaterialTheme.typography.displaySmall, color = Palette.Muted)
         }
-        Spacer(Modifier.height(8.dp))
-        Text("ADD", style = MaterialTheme.typography.labelSmall)
-        Text("", style = MaterialTheme.typography.labelSmall)
+        CellLabels(name = "ADD", caption = "", ring = ring)
     }
 }
 

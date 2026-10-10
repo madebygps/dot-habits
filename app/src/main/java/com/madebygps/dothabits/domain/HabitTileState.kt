@@ -15,7 +15,7 @@ data class HabitTileState(
             if (h.isNegative) return HabitTileState(dashed = true, dimmed = t.status == TodayStatus.SLIPPED)
             if (h.type == HabitType.STEPS && !t.hasData) return HabitTileState(dimmed = true)
             if (t.status == TodayStatus.REST && !t.timerRunning && !t.timerPaused) return HabitTileState(dimmed = true)
-            if (t.status == TodayStatus.DONE && !t.timerRunning && !t.timerPaused) return HabitTileState(solid = true)
+            if (t.status == TodayStatus.DONE) return HabitTileState(solid = true)
             return when (h.type) {
                 HabitType.COUNT -> {
                     val goal = if (h.schedule.kind == ScheduleKind.TIMES_PER_WEEK) h.schedule.perWeek else h.dailyTarget
@@ -39,7 +39,7 @@ data class HabitTileState(
     }
 }
 
-/** A stored session outlives goal/history edits, but never carries unfinished time into tomorrow. */
+/** Current-session progress below the daily goal; unfinished time never carries into tomorrow. */
 data class TileSessionProgress(val totalSeconds: Long, val remainingSeconds: Long) {
     val fraction: Float get() = ((totalSeconds - remainingSeconds).toDouble() / totalSeconds.coerceAtLeast(1)).toFloat().coerceIn(0f, 1f)
 }

@@ -131,6 +131,7 @@ class HabitRepository(
                     if (habit.type != HabitType.TIMED)
                         dao.unfinishedSessions().filter { it.habitId == habit.id }.forEach { dao.deleteSession(it.id) }
                     dao.update(habit.toEntity())
+                    discardCompletedTimersLocked(clockNow())
                 }
                 habit.id
             }
@@ -212,17 +213,19 @@ class HabitRepository(
         changed()
     }
 
-    /** Absolute completed credit edit. Never reads or modifies an unfinished timer. */
+    /** Absolute completed credit edit; meeting today's goal discards unfinished time without credit. */
     suspend fun setTimerCompletions(habitId: Long, date: LocalDate, completedSessions: Long) {
         writeLock.withLock {
-            val clock = clockNow()
-            val zone = zone()
-            val now = Instant.ofEpochMilli(clock.wallMs)
-            require(!date.isAfter(now.atZone(zone).toLocalDate())) { "Cannot log the future" }
-            val habit = dao.habit(habitId)?.toDomain() ?: return
-            require(habit.type == HabitType.TIMED)
-            require(completedSessions >= 0)
-            dao.replaceDay(habitId, date.toEpochDay(), Math.multiplyExact(completedSessions, habit.sessionSeconds), clock.wallMs)
+            database.withTransaction {
+                val clock = clockNow()
+                val now = Instant.ofEpochMilli(clock.wallMs)
+                require(!date.isAfter(now.atZone(zone()).toLocalDate())) { "Cannot log the future" }
+                val habit = dao.habit(habitId)?.toDomain() ?: return@withTransaction
+                require(habit.type == HabitType.TIMED)
+                require(completedSessions >= 0)
+                dao.replaceDay(habitId, date.toEpochDay(), Math.multiplyExact(completedSessions, habit.sessionSeconds), clock.wallMs)
+                discardCompletedTimersLocked(clock)
+            }
         }
         changed()
     }
@@ -244,7 +247,7 @@ class HabitRepository(
         changeTimer(habitId, start = false, sessionId = sessionId, generation = generation)
     }
 
-    /** Returns true when started, false when paused, or null if the habit is no longer timed. */
+    /** Returns true when started, false when paused, or null if unavailable or today's goal is met. */
     suspend fun toggleTimer(habitId: Long): Boolean? = changeTimer(habitId, start = null)
 
     private data class TimerChange(val started: Boolean?, val stateChanged: Boolean, val finished: List<Long>)
@@ -268,6 +271,10 @@ class HabitRepository(
                 val unfinished = dao.unfinishedSessions().map { it.toDomain() }
                 val ownRun = unfinished.firstOrNull { it.habitId == habitId && it.state == SessionState.RUNNING }
                 val shouldStart = start ?: (ownRun == null)
+                val today = Instant.ofEpochMilli(clock.wallMs).atZone(zone()).toLocalDate()
+                val completed = dao.entriesOn(habitId, today.toEpochDay()).sumOf { it.amount }
+                if (shouldStart && CompletionPolicy.timerGoalMet(habit, completed))
+                    return@withTransaction TimerChange(null, maintained.stateChanged, maintained.finished)
                 if (shouldStart && ownRun == null) {
                     val plan = TimerMath.startSession(habitId, habit.sessionSeconds, unfinished, clock, zone())
                     plan.updates.forEach { dao.updateSession(it.toEntity()) }
@@ -285,9 +292,23 @@ class HabitRepository(
 
     private data class TimerMaintenance(val stateChanged: Boolean, val finished: List<Long>)
 
+    private suspend fun discardCompletedTimersLocked(clock: TimerMath.ClockReading): Boolean {
+        val today = Instant.ofEpochMilli(clock.wallMs).atZone(zone()).toLocalDate()
+        var discarded = false
+        dao.unfinishedSessions().forEach { row ->
+            val habit = dao.habit(row.habitId)?.toDomain() ?: return@forEach
+            val completed = dao.entriesOn(habit.id, today.toEpochDay()).sumOf { it.amount }
+            if (CompletionPolicy.shouldDiscardTimer(habit, completed, row.toDomain(), today)) {
+                dao.deleteSession(row.id)
+                discarded = true
+            }
+        }
+        return discarded
+    }
+
     private suspend fun maintainTimersLocked(clock: TimerMath.ClockReading): TimerMaintenance {
         val finished = mutableListOf<Long>()
-        var stateChanged = false
+        var stateChanged = discardCompletedTimersLocked(clock)
         dao.unfinishedSessions().forEach { row ->
             val s = row.toDomain()
             val change = TimerMath.settle(s, clock, zone())
@@ -302,6 +323,7 @@ class HabitRepository(
                 finished.add(s.habitId)
             }
         }
+        if (discardCompletedTimersLocked(clock)) stateChanged = true
         return TimerMaintenance(stateChanged, finished)
     }
 

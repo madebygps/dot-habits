@@ -44,6 +44,8 @@ data class HabitToday(
 
     val countsTowardToday: Boolean get() = status != TodayStatus.REST
     val isComplete: Boolean get() = status == TodayStatus.DONE || status == TodayStatus.ON_TRACK
+
+    val canControlTimer: Boolean get() = habit.type == HabitType.TIMED && !CompletionPolicy.timerGoalMet(habit, value)
 }
 
 /**
@@ -108,7 +110,8 @@ object SnapshotBuilder {
         val week = HabitRules.weekProgress(habit, today, today, firstDay, h.values)
         val streak = HabitRules.streaks(habit, today, firstDay, h.values)
         val session = h.sessions.firstOrNull {
-            habit.type == HabitType.TIMED && it.state != SessionState.CLOSED && it.epochDay == today.toEpochDay()
+            habit.type == HabitType.TIMED && it.state != SessionState.CLOSED && it.epochDay == today.toEpochDay() &&
+                !CompletionPolicy.timerGoalMet(habit, todayValue)
         }
         val timing = session?.let { TimerMath.timing(it, now) }
         val run = session?.takeIf { it.state == SessionState.RUNNING }
@@ -167,7 +170,7 @@ object SnapshotBuilder {
         preferredTimer: Long? = null,
     ): TodaySnapshot {
         val habits = histories.sortedBy { it.habit.position }.map { habitToday(it, today, firstDay, now) }
-        val open = habits.filter { it.habit.type == HabitType.TIMED && (it.timerPaused || it.timerRunning || (it.countsTowardToday && !it.isComplete)) }
+        val open = habits.filter { it.canControlTimer && (it.timerPaused || it.timerRunning || (it.countsTowardToday && !it.isComplete)) }
         val timerHabit = habits.firstOrNull { it.timerRunning }
             ?: open.firstOrNull { it.habit.id == preferredTimer }
             ?: open.firstOrNull()

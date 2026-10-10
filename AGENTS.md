@@ -50,8 +50,11 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   Nothing OS owns Glyph Progress's visual effects: numeric progress increasing is not proof of a static
   LED animation, and the SDK does not expose a system-progress animation toggle.
 - Timed habits are sessions × minutes. A logical session captures `limitSeconds`, remaining milliseconds,
-  original credit day and a monotonic running anchor. Pause/resume retains that session; duration, goal and
-  history edits never change an unfinished session. Only full planned completion writes credit, once.
+  original credit day and a monotonic running anchor. Pause/resume retains that session. Duration, goal and
+  history edits preserve it while today's recorded credit is below the current daily goal. Meeting today's
+  goal through timer completion, manual correction or goal/duration edits discards unfinished time without
+  extra credit and prevents restarting for that day. Correcting below goal allows a fresh timer, never
+  restores discarded partial time. Only full planned timer completion writes automatic credit, once.
 - Glyph output stays monochrome; the highlight colour applies to app + widgets only.
 - No Essential Space integration and no Essential Key remapping.
 - Never fabricate data: no seeded history, no estimated steps. Missing step data shows "NO STEP DATA".
@@ -73,7 +76,9 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   partial credit, heartbeat checkpoint or recovery review. A delayed completion before midnight retains
   its original day's credit. One timer runs at a time; starting another pauses the previous session.
 - Manual timer history edits replace the day's completed credit in seconds; no signed offsets against
-  active time. Current habit duration evaluates historical seconds but never alters an unfinished timer.
+  active time. Current habit duration evaluates historical seconds. Past-day corrections do not affect
+  today's timer; meeting today's current daily goal discards it. Weekly goals met on other days do not
+  discard today's incomplete timer.
 - Alarms only for reminders, midnight rollover and session end; use `setWindow` (Phone (3) gave
   `setAndAllowWhileIdle` a 1-hour window). `SCHEDULE_EXACT_ALARM` optional, never `USE_EXACT_ALARM`.
 - Stats count closed opportunities only (scheduled past days, or finished weeks); today and the current week never count.

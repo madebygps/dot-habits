@@ -21,8 +21,6 @@ object Refresh {
     private val lock = Mutex()
 
     suspend fun afterDataChange(context: Context, reason: String = "data-change") {
-        // Settle expired runs before a snapshot can cancel their pending completion alarm.
-        context.dotApp.repository.finishElapsedSessions(refreshSurfaces = false)
         refreshSurfaces(context, reason)
     }
 

@@ -12,11 +12,11 @@ class TimerProgressTest {
     private val now = day.atTime(12, 0).toInstant(ZoneOffset.UTC)
     private val habit = Habit(1, "Focus", "dot", HabitType.TIMED, 25, sessions = 4, createdOn = day)
 
-    private fun today(value: Long, running: Boolean = true): HabitToday {
+    private fun today(value: Long, running: Boolean = true, remaining: Long = 1500): HabitToday {
         val sessions = if (running) listOf(
             TimerSession(
-                1, habit.id, now, null, SessionState.RUNNING, now, 1,
-                limitSeconds = TimerMath.sessionRemaining(value, habit.sessionSeconds),
+                1, habit.id, now, null, SessionState.RUNNING, 1,
+                limitSeconds = habit.sessionSeconds, remainingMs = remaining * 1000, epochDay = day.toEpochDay(),
             ),
         ) else emptyList()
         return SnapshotBuilder.build(
@@ -30,12 +30,12 @@ class TimerProgressTest {
     }
 
     @Test fun progressUsesCurrentSessionRatherThanDailyGoal() {
-        assertEquals(TimerProgress(200, 1_200), TimerProgress.from(today(300)))
-        assertEquals(TimerProgress(200, 1_200), TimerProgress.from(today(1_800)))
+        assertEquals(TimerProgress(200, 1_200), TimerProgress.from(today(0, remaining = 1200)))
+        assertEquals(TimerProgress(200, 1_200), TimerProgress.from(today(1500, remaining = 1200)))
     }
 
     @Test fun resumedSessionKeepsAccumulatedProgress() {
-        assertEquals(TimerProgress(500, 750), TimerProgress.from(today(2_250)))
+        assertEquals(TimerProgress(500, 750), TimerProgress.from(today(1500, remaining = 750)))
     }
 
     @Test fun nextSessionResetsProgress() {
@@ -43,7 +43,7 @@ class TimerProgressTest {
     }
 
     @Test fun finalSecondDoesNotClaimCompletionEarly() {
-        assertEquals(TimerProgress(999, 1), TimerProgress.from(today(1_499)))
+        assertEquals(TimerProgress(999, 1), TimerProgress.from(today(0, remaining = 1)))
     }
 
     @Test fun pausedOrFinishedTimersHaveNoLiveProgress() {

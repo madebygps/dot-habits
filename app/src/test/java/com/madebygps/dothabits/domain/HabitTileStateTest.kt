@@ -51,7 +51,9 @@ class HabitTileStateTest {
     }
 
     @Test fun timerSeparatesFinishedSessionsFromPartialSession() {
-        val t = today(timed, 28 * 60)
+        val paused = TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1200,
+            remainingMs = 720_000, epochDay = day.toEpochDay())
+        val t = today(timed, 20 * 60, listOf(paused))
         val state = HabitTileState.from(t)
         assertEquals(3, state.segments)
         assertEquals(1f / 3, state.borderFraction, 0.0001f)
@@ -68,7 +70,9 @@ class HabitTileStateTest {
     }
 
     @Test fun singleSessionTimerStillFillsInterior() {
-        val state = HabitTileState.from(today(timed.copy(sessions = 1), 10 * 60))
+        val paused = TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1200,
+            remainingMs = 600_000, epochDay = day.toEpochDay())
+        val state = HabitTileState.from(today(timed.copy(sessions = 1), sessions = listOf(paused)))
         assertEquals(0, state.segments)
         assertEquals(0f, state.borderFraction, 0f)
         assertEquals(.5f, state.interiorFraction, 0f)
@@ -132,7 +136,7 @@ class HabitTileStateTest {
 
     @Test fun activeStoredRunDoesNotWrapAfterHistoryOrDurationEdits() {
         val start = now.minusSeconds(8 * 60)
-        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, now, 1, 20 * 60)
+        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, 1, 20 * 60, epochDay = day.toEpochDay())
         for (target in listOf(10, 20)) {
             val t = today(timed.copy(dailyTarget = target), value = 60 * 60, sessions = listOf(run))
             val state = HabitTileState.from(t)
@@ -144,36 +148,39 @@ class HabitTileStateTest {
 
     @Test fun resumedRunRetainsEarlierSessionProgress() {
         val start = now.minusSeconds(3 * 60)
-        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, now, 1, 12 * 60)
-        val t = today(timed, 11 * 60, listOf(run))
+        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, 1, 20 * 60,
+            remainingMs = 12 * 60_000, epochDay = day.toEpochDay())
+        val t = today(timed, 20 * 60, listOf(run))
         assertEquals(.55f, HabitTileState.from(t).interiorFraction, .0001f)
         assertEquals(9 * 60L, t.tileSessionProgress?.remainingSeconds)
     }
 
-    @Test fun midnightSplitsDailyAccountingNotLiveSessionFill() {
+    @Test fun midnightNeverCarriesUnfinishedProgress() {
         val midnight = day.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
         val current = midnight.plusSeconds(5 * 60)
         val start = midnight.minusSeconds(5 * 60)
-        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, current, 1, 20 * 60)
+        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, 1, 20 * 60, epochDay = day.minusDays(1).toEpochDay())
         val history = HistoryAssembler.assemble(listOf(timed), emptyList(), listOf(run), emptyMap(), day, ZoneId.of("UTC"), current)
         val t = SnapshotBuilder.build(history, day, DayOfWeek.MONDAY, current).habits.single()
-        assertEquals(5 * 60L, t.value)
-        assertEquals(.5f, HabitTileState.from(t).interiorFraction, .0001f)
-        assertEquals("10:00 LEFT", HabitLabels.caption(t))
+        assertEquals(0L, t.value)
+        assertEquals(0f, HabitTileState.from(t).interiorFraction, .0001f)
+        assertFalse(t.timerRunning)
     }
 
-    @Test fun reviewUsesOnlyConfirmedAliveTimeAndNeverLooksDone() {
+    @Test fun pausedSessionRetainsProgressWithoutCreditingHistory() {
         val start = now.minusSeconds(20 * 60)
-        val run = TimerSession(1, timed.id, start, null, SessionState.NEEDS_REVIEW, start.plusSeconds(8 * 60), 1, 20 * 60)
-        val t = today(timed, 60 * 60, listOf(run))
-        assertEquals("NEEDS REVIEW", HabitLabels.caption(t))
+        val run = TimerSession(1, timed.id, start, null, SessionState.PAUSED, 1, 20 * 60,
+            remainingMs = 12 * 60_000, epochDay = day.toEpochDay())
+        val t = today(timed, sessions = listOf(run))
+        assertEquals("12:00 PAUSED", HabitLabels.caption(t))
         assertFalse(HabitTileState.from(t).solid)
         assertEquals(.4f, HabitTileState.from(t).interiorFraction, .0001f)
     }
 
-    @Test fun expiredRunFallsBackToSessionBoundary() {
+    @Test fun completedRunResetsInterior() {
         val start = now.minusSeconds(20 * 60)
-        val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, start, 1, 20 * 60)
+        val run = TimerSession(1, timed.id, start, now, SessionState.CLOSED, 1, 20 * 60,
+            remainingMs = 0, epochDay = day.toEpochDay())
         val t = today(timed, 20 * 60, listOf(run))
         assertFalse(t.timerRunning)
         assertNull(t.tileSessionProgress)

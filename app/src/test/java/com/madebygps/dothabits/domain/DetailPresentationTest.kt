@@ -86,17 +86,20 @@ class DetailPresentationTest {
     @Test fun timerContextHasOnlyRemainingAndQuietPosition() {
         assertEquals(TimerContext("25:00 left", "Session 1 of 2 · 25 min each"), DetailPresentation.timerContext(snapshot()))
         assertEquals(TimerContext("14:32 remaining · paused", "Session 2 of 2 · 25 min each"),
-            DetailPresentation.timerContext(snapshot(value = 25 * 60 + 10 * 60 + 28)))
+            DetailPresentation.timerContext(snapshot(value = 25 * 60, runs = listOf(
+                TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1500,
+                    remainingMs = 872_000, epochDay = today.toEpochDay()),
+            ))))
         assertEquals("25:00 left", DetailPresentation.timerContext(snapshot(value = 25 * 60)).primary)
         assertEquals("Today complete", DetailPresentation.timerContext(snapshot(value = 50 * 60)).primary)
         assertEquals("Rest day", DetailPresentation.timerContext(snapshot(timed.copy(schedule = Schedule.weekdays(DayOfWeek.MONDAY)))).primary)
     }
 
     @Test fun storedRunWinsOverEditedHistoryDurationAndDoneStatus() {
-        val run = TimerSession(1, timed.id, now.minusSeconds(8 * 60), null, SessionState.RUNNING, now, 1, 25 * 60)
+        val run = TimerSession(1, timed.id, now.minusSeconds(8 * 60), null, SessionState.RUNNING, 1, 25 * 60, epochDay = today.toEpochDay())
         val context = DetailPresentation.timerContext(snapshot(timed.copy(dailyTarget = 10), value = 100 * 60, runs = listOf(run)))
         assertEquals("17:00 left", context.primary)
-        assertEquals("Session 2 of 2 · 10 min each", context.secondary)
+        assertEquals("Session 2 of 2 · 25 min each", context.secondary)
     }
 
     @Test fun singleSessionContextOmitsRedundantPositionAndEach() {
@@ -105,22 +108,23 @@ class DetailPresentationTest {
         assertEquals("1 session · 60 min", DetailPresentation.timerContext(snapshot(habit, value = 3600)).secondary)
     }
 
-    @Test fun reviewOverridesDoneAndRunningAndUsesOnlyConfirmedTime() {
-        val run = TimerSession(1, timed.id, now.minusSeconds(20 * 60), null, SessionState.NEEDS_REVIEW, now.minusSeconds(12 * 60), 1, 25 * 60)
+    @Test fun pausedSessionContextWinsOverCompletedHistory() {
+        val run = TimerSession(1, timed.id, now.minusSeconds(20 * 60), null, SessionState.PAUSED, 1, 25 * 60,
+            remainingMs = 17 * 60_000, epochDay = today.toEpochDay())
         val t = snapshot(value = 50 * 60, runs = listOf(run))
         assertEquals(17 * 60L, t.tileSessionProgress?.remainingSeconds)
-        assertEquals("Needs review", DetailPresentation.timerContext(t).primary)
-        assertEquals("Needs review", DetailPresentation.timerContext(t.copy(timerRunning = true)).primary)
+        assertEquals("17:00 remaining · paused", DetailPresentation.timerContext(t).primary)
     }
 
-    @Test fun midnightChangesDailyCreditNotStoredCountdown() {
+    @Test fun midnightDropsUnfinishedCountdownFromNewDaysPresentation() {
         val midnight = today.atStartOfDay(zone).toInstant()
         val current = midnight.plusSeconds(5 * 60)
-        val run = TimerSession(1, timed.id, midnight.minusSeconds(5 * 60), null, SessionState.RUNNING, current, 1, 25 * 60)
+        val run = TimerSession(1, timed.id, midnight.minusSeconds(5 * 60), null, SessionState.RUNNING, 1, 25 * 60,
+            epochDay = today.minusDays(1).toEpochDay())
         val history = HistoryAssembler.assemble(listOf(timed), emptyList(), listOf(run), emptyMap(), today, zone, current).single()
         val t = SnapshotBuilder.habitToday(history, today, DayOfWeek.MONDAY, current)
-        assertEquals(5 * 60L, t.value)
-        assertEquals("15:00 left", DetailPresentation.timerContext(t).primary)
+        assertEquals(0L, t.value)
+        assertEquals("25:00 left", DetailPresentation.timerContext(t).primary)
     }
 
     @Test fun closedStatisticsExcludeTodayAndRestDays() {

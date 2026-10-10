@@ -42,9 +42,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val steps: StateFlow<StepsStatus?> = _steps.asStateFlow()
 
     fun onResume() = viewModelScope.launch {
-        repository.reconcileAfterBoot()
-        repository.finishElapsedSessions()
-        repository.touchAlive()
+        com.madebygps.dothabits.system.TimerLifecycle.settle(dot)
         refreshSteps()
     }
 

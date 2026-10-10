@@ -43,9 +43,8 @@ object GlyphFrames {
             }
             return px
         }
-        val sessionSecs = t.sessionSeconds.coerceAtLeast(1)
         val n = t.sessions.coerceAtLeast(1)
-        segmentedRing(px, List(n) { i -> (t.todaySeconds.toFloat() / sessionSecs - i).coerceIn(0f, 1f) })
+        segmentedRing(px, List(n) { i -> (t.sessionsDone + t.sessionFraction - i).coerceIn(0f, 1f) })
         if (t.running) playMark(px) else pauseMark(px)
         val label = TimerMath.formatGlyphCountdown(t.sessionRemaining)
         val level = if (t.running) ON else PAUSED_TEXT
@@ -82,8 +81,7 @@ object GlyphFrames {
     fun picked(snapshot: TodaySnapshot): IntArray {
         val t = snapshot.activeTimer ?: return render(snapshot)
         val px = IntArray(SIZE * SIZE)
-        val sessionSecs = t.sessionSeconds.coerceAtLeast(1)
-        segmentedRing(px, List(t.sessions.coerceAtLeast(1)) { i -> (t.todaySeconds.toFloat() / sessionSecs - i).coerceIn(0f, 1f) })
+        segmentedRing(px, List(t.sessions.coerceAtLeast(1)) { i -> (t.sessionsDone + t.sessionFraction - i).coerceIn(0f, 1f) })
         icon(px, t.icon)
         choiceDots(px, t.choices.size, t.choices.indexOf(t.habitId))
         return px

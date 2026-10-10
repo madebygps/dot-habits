@@ -15,7 +15,7 @@ class BackgroundDiagnosticsTest {
             daysRead = 2,
             cacheChanged = false,
             hadRunningTimer = true,
-            touchAliveMs = 3,
+            timerLifecycleMs = 3,
             stepSyncMs = 5,
             refreshRequestMs = 7,
             totalMs = 11,

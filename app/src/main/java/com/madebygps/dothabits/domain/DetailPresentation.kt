@@ -56,17 +56,16 @@ object DetailPresentation {
         val remaining = t.tileSessionProgress?.remainingSeconds ?: t.sessionRemaining
         val done = TimerMath.sessionsDone(t.value.coerceAtLeast(0), h.sessionSeconds, h.sessions)
         val primary = when {
-            t.needsReview -> "Needs review"
             t.timerRunning -> "${TimerMath.formatClock(remaining)} left"
+            t.timerPaused -> "${TimerMath.formatClock(remaining)} remaining · paused"
             t.value >= h.dailyGoalUnits -> "Today complete"
             t.status == TodayStatus.REST -> "Rest day"
-            t.value > 0 && remaining < h.sessionSeconds -> "${TimerMath.formatClock(remaining)} remaining · paused"
             else -> "${TimerMath.formatClock(remaining)} left"
         }
         return TimerContext(
             primary,
-            if (h.sessions == 1) "1 session · ${h.sessionSeconds / 60} min"
-            else "Session ${(done + 1).coerceAtMost(h.sessions.coerceAtLeast(1))} of ${h.sessions} · ${h.sessionSeconds / 60} min each",
+            if (h.sessions == 1) "1 session · ${(t.tileSessionProgress?.totalSeconds ?: h.sessionSeconds) / 60} min"
+            else "Session ${(done + 1).coerceAtMost(h.sessions.coerceAtLeast(1))} of ${h.sessions} · ${(t.tileSessionProgress?.totalSeconds ?: h.sessionSeconds) / 60} min each",
         )
     }
 

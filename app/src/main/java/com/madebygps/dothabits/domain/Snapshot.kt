@@ -1,7 +1,6 @@
 package com.madebygps.dothabits.domain
 
 import java.time.DayOfWeek
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 
@@ -29,7 +28,7 @@ data class HabitToday(
     val streak: StreakStats,
     val week: Pair<Int, Int>?,
     val timerRunning: Boolean,
-    val needsReview: Boolean,
+    val timerPaused: Boolean = false,
     /** For STEPS habits: false when no Health Connect reading exists for today. */
     val hasData: Boolean = true,
     /** App/widget current-session fill, anchored to a stored run rather than rounded day totals. */
@@ -37,9 +36,11 @@ data class HabitToday(
     /** Fixed deadline of the live run, independent of day rollover or edits to its habit. */
     val timerEndsAt: Instant? = null,
     val runningSecondsRemaining: Long? = null,
+    val timerSessionId: Long? = null,
+    val timerGeneration: Long? = null,
 ) {
     /** TIMED only: seconds left in the current session (a full session once the last one ended). */
-    val sessionRemaining: Long get() = runningSecondsRemaining ?: TimerMath.sessionRemaining(value, habit.sessionSeconds)
+    val sessionRemaining: Long get() = runningSecondsRemaining ?: habit.sessionSeconds
 
     val countsTowardToday: Boolean get() = status != TodayStatus.REST
     val isComplete: Boolean get() = status == TodayStatus.DONE || status == TodayStatus.ON_TRACK
@@ -63,12 +64,15 @@ data class ActiveTimer(
     /** Timed habits due today and not done, in home order; the toy's hold gesture cycles them. */
     val choices: List<Long> = listOf(habitId),
     val endsAt: Instant? = null,
+    val completedSessions: Int = TimerMath.sessionsDone(todaySeconds, sessionSeconds, sessions),
 ) {
     /** The habit a hold should switch to, or null when there's nothing else to pick or one is running. */
     val next: Long? get() = if (running || choices.size < 2) null
         else choices[(choices.indexOf(habitId) + 1).mod(choices.size)]
 
-    val sessionsDone: Int get() = TimerMath.sessionsDone(todaySeconds, sessionSeconds, sessions)
+    val sessionsDone: Int get() = completedSessions
+    val sessionFraction: Float get() =
+        ((sessionSeconds - sessionRemaining).toDouble() / sessionSeconds.coerceAtLeast(1)).toFloat().coerceIn(0f, 1f)
 }
 
 /**
@@ -103,17 +107,13 @@ object SnapshotBuilder {
         val todayValue = h.values[today] ?: 0L
         val week = HabitRules.weekProgress(habit, today, today, firstDay, h.values)
         val streak = HabitRules.streaks(habit, today, firstDay, h.values)
-        val run = h.sessions.firstOrNull { habit.type == HabitType.TIMED && TimerMath.isLive(it, now) }
-        val endsAt = run?.takeIf { it.limitSeconds != null }?.let { TimerMath.limitEnd(it) }
-        val review = h.sessions.any { it.state == SessionState.NEEDS_REVIEW }
-        val displayedRun = h.sessions
-            .filter { it.limitSeconds != null && (TimerMath.isLive(it, now) || it.state == SessionState.NEEDS_REVIEW) }
-            .maxByOrNull { it.start }
-        val tileSessionProgress = displayedRun?.let { run ->
-            val total = maxOf(habit.sessionSeconds, run.limitSeconds ?: 0, 1)
-            val observed = if (run.state == SessionState.NEEDS_REVIEW) run.lastAlive else now
-            val remaining = Duration.between(observed, TimerMath.limitEnd(run)).seconds.coerceIn(0, total)
-            TileSessionProgress(total, remaining)
+        val session = h.sessions.firstOrNull {
+            habit.type == HabitType.TIMED && it.state != SessionState.CLOSED && it.epochDay == today.toEpochDay()
+        }
+        val timing = session?.let { TimerMath.timing(it, now) }
+        val run = session?.takeIf { it.state == SessionState.RUNNING }
+        val tileSessionProgress = session?.let {
+            TileSessionProgress(it.limitSeconds, timing!!.remainingSeconds)
         }
 
         val (value, fraction, status) = when {
@@ -143,11 +143,13 @@ object SnapshotBuilder {
             streak = streak,
             week = week,
             timerRunning = run != null,
-            needsReview = review,
+            timerPaused = session?.state == SessionState.PAUSED,
             hasData = habit.type != HabitType.STEPS || h.stepsAvailableToday,
             tileSessionProgress = tileSessionProgress,
-            timerEndsAt = endsAt,
-            runningSecondsRemaining = endsAt?.let { (Duration.between(now, it).toMillis() + 999) / 1000 },
+            timerEndsAt = timing?.endsAt,
+            runningSecondsRemaining = timing?.remainingSeconds,
+            timerSessionId = session?.id,
+            timerGeneration = session?.generation,
         )
     }
 
@@ -165,17 +167,18 @@ object SnapshotBuilder {
         preferredTimer: Long? = null,
     ): TodaySnapshot {
         val habits = histories.sortedBy { it.habit.position }.map { habitToday(it, today, firstDay, now) }
-        val open = habits.filter { it.habit.type == HabitType.TIMED && it.countsTowardToday && !it.isComplete }
+        val open = habits.filter { it.habit.type == HabitType.TIMED && (it.timerPaused || it.timerRunning || (it.countsTowardToday && !it.isComplete)) }
         val timerHabit = habits.firstOrNull { it.timerRunning }
             ?: open.firstOrNull { it.habit.id == preferredTimer }
             ?: open.firstOrNull()
         val active = timerHabit?.let {
             val choices = open.map { o -> o.habit.id }.ifEmpty { listOf(it.habit.id) }
             ActiveTimer(
-                it.habit.id, it.habit.name, it.value, it.habit.sessionSeconds, it.habit.sessions,
+                it.habit.id, it.habit.name, it.value, it.tileSessionProgress?.totalSeconds ?: it.habit.sessionSeconds, it.habit.sessions,
                 it.timerRunning, it.sessionRemaining, it.habit.icon,
                 if (it.habit.id in choices) choices else listOf(it.habit.id) + choices,
                 it.timerEndsAt,
+                TimerMath.sessionsDone(it.value, it.habit.sessionSeconds, it.habit.sessions),
             )
         }
         return TodaySnapshot(today, habits, active)

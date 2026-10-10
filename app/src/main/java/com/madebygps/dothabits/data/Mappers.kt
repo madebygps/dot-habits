@@ -54,7 +54,15 @@ fun TimerSessionEntity.toDomain() = TimerSession(
     start = Instant.ofEpochMilli(startMs),
     end = endMs?.let(Instant::ofEpochMilli),
     state = SessionState.valueOf(state),
-    lastAlive = Instant.ofEpochMilli(lastAliveMs),
     bootCount = bootCount,
     limitSeconds = limitSeconds,
+    remainingMs = remainingMs,
+    epochDay = epochDay,
+    startElapsedMs = startElapsedMs,
+    generation = generation,
+)
+
+fun TimerSession.toEntity() = TimerSessionEntity(
+    id, habitId, start.toEpochMilli(), end?.toEpochMilli(), state.name, bootCount,
+    startElapsedMs, limitSeconds, remainingMs, epochDay, generation,
 )

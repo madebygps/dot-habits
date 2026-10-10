@@ -11,9 +11,9 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Habit types:** check/count (e.g. meds 2×/day), timer (sessions × minutes, e.g. Deep Work 4 × 25), steps, and avoid.
 - **Schedules:** every day, selected weekdays, N distinct days/week, or N times/week. The week starts Monday by default.
 - **Streaks:** a single muted dot inside a home tile marks a nonzero current streak (no numeric caption or personal-best marker). Detail shows compact Current/Best values and a seven-day or seven-week dot chain, with truthful rest, partial, pending and current-period states. Daily streaks skip unscheduled days; weekly streaks reset only when a week closes below their goal.
-- **Detail:** a centered hero keeps tile progress and timer controls. Timers show only current-session remaining time plus session position/duration. Interrupted timers keep a prominent review card, the only place timer timestamps are exposed.
+- **Detail:** a centered hero keeps tile progress and timer controls. Timers show current-session remaining time plus session position and the session's captured duration. No recovery review or internal timestamps.
 - **History:** expand Calendar and tap today or a past date for completion progress. Timer days show only completed-session count (for example, “1 of 2 sessions complete”) and **Adjust completion**. Set the absolute integer count, up or down, including activity done without the timer. No manual-minutes editor, session list or session deletion. Count/slip corrections remain available; steps stay read-only.
-- **Timer corrections:** existing entries store a signed seconds offset from internal recorded credit. Saving replaces that day's offset with `completedSessions × sessionSeconds + creditedRemainder − recordedSeconds`, preserving fractional progress without double counting or deleting runs. Running corrections leave timestamps, monotonic anchors, limits and deadlines untouched, even when the corrected daily goal is met; the run still ends at its own limit. Midnight credit and corrections stay on their respective dates. All surfaces, streaks and statistics use corrected history. No schema change is needed. As with recorded credit, history remains in seconds and is evaluated against the current session duration; changing duration can change historical completion counts, but never the active run's limit. Interrupted runs can still be reviewed or discarded explicitly.
+- **Timer corrections:** saving replaces the day's completed credit with `completedSessions × currentSessionSeconds`. There are no offsets against active time. Running and paused sessions retain their own captured duration, remaining milliseconds, monotonic anchor and original day regardless of history or goal edits. All surfaces, streaks and statistics use corrected history. History remains in seconds and is evaluated against the current habit duration, so changing duration can change historical completion counts, but never an unfinished timer. Schema v5 converts legacy closed intervals plus manual corrections into whole completed credit per day and discards legacy unfinished runs and fractional credit. Unfinished rows never automatically earn migrated credit, even when their last checkpoint reaches the limit. Explicit legacy corrections are decoded at their creation timestamp (reviewed runs are also capped at their last-alive checkpoint), never advanced to migration time. Legacy rows lack complete duration-edit and boot history: the largest recorded daily session limit is a conservative conversion heuristic, not proof of each original session's duration.
 - **Habit statistics:** collapsed and read-only, with past scheduled days met and recent closed-opportunity completion rate. Current/Best remain visible above the recent chain.
 - **Help:** contextual `?` links to the shared **Settings › How Dot Habits works** guide, covering progress, schedules, streaks, timers, steps, history and display controls.
 - **Statistics:** 30/60/90-day or all-time completion rate, weekly bars and a by-weekday chart.
@@ -95,13 +95,17 @@ SDK does not expose the system renderer or an animation toggle, so the internal 
 - **Steps** come from Health Connect's built-in phone step counter, so no tracker app is needed. Only the phone's own
   steps count; other apps writing steps are ignored to avoid double counting. Counting starts once access is granted,
   so there is no earlier history. Steps sync about every 15 minutes in the background and every minute while the app is open.
-- **Timers** keep running when the app is closed or the screen is locked, and split at midnight. After a reboot, a
-  timer that was running asks you to review its time instead of guessing.
+- **Timers** keep timing when the app is closed or the screen is locked. Only finishing the planned
+  session earns habit credit. Pausing preserves the same session for resume today, without partial credit.
+  Midnight discards unfinished running and paused sessions, with no split or carry; completed sessions
+  retain their original day's credit, even when the alarm arrives late. Reboot also discards unfinished
+  running and paused sessions, with no recovery review or guessed credit.
   Session lengths range from 1 to 300 minutes in one-minute steps; history corrections use completed-session counts.
-  A running session keeps its original deadline when you edit its goal or history, or when the day changes.
-  Switching a habit away from Timer pauses its run. While visible, the app confirms running time every second
-  so restart recovery retains the latest observed time; time while asleep remains conservative.
-  Short pause/resume runs accumulate before rounding to whole seconds.
+  Running and paused sessions keep their configured duration when you edit the habit or history.
+  Starting another timer pauses the previous one; switching a habit away from Timer discards its unfinished
+  session. Pause/resume retains subsecond precision. A shared lifecycle owner handles completion and discard
+  transactionally; display loops never write heartbeat checkpoints or completion credit. App, toys,
+  Live Updates and alarms use one remaining-time/deadline calculation. OS alarms cover process death.
 - **Live timer progress** refreshes at most every 15 seconds while the process is alive, without a
   foreground service, wake lock or polling alarm. Android ticks the countdown itself; progress-bar updates
   can pause during sleep or process eviction. The ongoing notification expires at session end even if
@@ -117,7 +121,8 @@ SDK does not expose the system renderer or an animation toggle, so the internal 
 - Both toys appear separately in Nothing's toy manager
 - Habit selection saves from the in-app picker and survives an app restart
 - The single-habit widget on the home screen
-- Timer pause/resume, session limits, notification Pause, background completion after process death, and restart review
+- Legacy timer pause/resume, session limits, notification Pause and background completion after process death
+  were verified before the schema v5 redesign; the new lifecycle still needs on-device verification.
 - One-minute timer controls and live goal/history edits retaining the running session's deadline
 - Debug Live Update recognized by system Glyph Progress; user confirmed locked-screen display,
   temporary Clock override via button, and automatic return to the AOD clock at probe completion

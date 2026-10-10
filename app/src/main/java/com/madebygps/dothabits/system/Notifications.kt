@@ -12,6 +12,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.madebygps.dothabits.MainActivity
 import com.madebygps.dothabits.R
 import com.madebygps.dothabits.domain.Habit
+import com.madebygps.dothabits.domain.TimerDismissal
 import com.madebygps.dothabits.domain.TimerMath
 import com.madebygps.dothabits.domain.TimerProgress
 import com.madebygps.dothabits.domain.TodaySnapshot
@@ -34,13 +35,13 @@ object Notifications {
                 NotificationChannel(CH_TIMER, context.getString(R.string.channel_timer), NotificationManager.IMPORTANCE_LOW).apply {
                     setShowBadge(false)
                 },
-                NotificationChannel(CH_REVIEW, context.getString(R.string.channel_review), NotificationManager.IMPORTANCE_DEFAULT),
                 NotificationChannel(CH_SESSION_DONE, context.getString(R.string.channel_session_done), NotificationManager.IMPORTANCE_HIGH).apply {
                     enableVibration(true)
                     vibrationPattern = longArrayOf(0, 250, 150, 250, 150, 400)
                 },
             ),
         )
+        nm.deleteNotificationChannel(CH_REVIEW)
     }
 
     fun canPost(context: Context) =
@@ -58,55 +59,64 @@ object Notifications {
 
     private const val TIMER_PREFS = "timer_notifications"
     private const val DISMISSED_RUN = "dismissed_run"
+    private const val DISMISSED_GENERATION = "dismissed_generation"
 
-    fun dismissTimer(context: Context, runId: Long) {
+    private fun storedDismissal(context: Context): TimerDismissal.Run? {
+        val prefs = context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE)
+        return if (prefs.contains(DISMISSED_GENERATION))
+            TimerDismissal.Run(prefs.getLong(DISMISSED_RUN, -1L), prefs.getLong(DISMISSED_GENERATION, -1L))
+        else null
+    }
+
+    /** [current] is the run now showing; a stale (older generation) callback leaves the stored pair alone. */
+    fun dismissTimer(context: Context, incoming: TimerDismissal.Run, current: TimerDismissal.Run?) {
+        val next = TimerDismissal.accept(current, incoming, storedDismissal(context)) ?: return
         context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
-            .putLong(DISMISSED_RUN, runId).apply()
+            .putLong(DISMISSED_RUN, next.sessionId).putLong(DISMISSED_GENERATION, next.generation).apply()
     }
 
     /** The system owns the countdown; progress refreshes opportunistically without waking the phone. */
     @Suppress("MissingPermission")
-    fun updateTimer(
-        context: Context,
-        snapshot: TodaySnapshot,
-        runId: Long?,
-        sessionEndMs: Long?,
-        runLimitSeconds: Long?,
-    ) {
+    fun updateTimer(context: Context, snapshot: TodaySnapshot) {
         val nm = NotificationManagerCompat.from(context)
         val running = snapshot.habits.firstOrNull { it.timerRunning }
-        val dismissed = runId != null && context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE)
-            .getLong(DISMISSED_RUN, -1L) == runId
+        val runId = running?.timerSessionId
+        val generation = running?.timerGeneration
+        val dismissed = TimerDismissal.hidden(
+            storedDismissal(context),
+            if (runId != null && generation != null) TimerDismissal.Run(runId, generation) else null,
+        )
         if (running == null || runId == null || dismissed || !canPost(context)) {
             nm.cancel(ID_TIMER)
         } else {
             val nowMs = System.currentTimeMillis()
-            val endMs = running.timerEndsAt?.toEpochMilli() ?: sessionEndMs ?: (nowMs + running.sessionRemaining * 1_000L)
-            val progress = requireNotNull(
-                TimerProgress.from(
-                    running,
-                    runLimitSeconds ?: running.habit.sessionSeconds,
-                    ((endMs - nowMs).coerceAtLeast(0) + 999L) / 1_000L,
-                ),
-            )
+            val endMs = requireNotNull(running.timerEndsAt?.toEpochMilli())
+            val progress = requireNotNull(TimerProgress.from(running))
+            val expiresAt = minOf(endMs, snapshot.date.plusDays(1)
+                .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli())
             val pause = PendingIntent.getBroadcast(
                 context, 1,
                 Intent(context, ActionReceiver::class.java).setAction(ActionReceiver.ACTION_PAUSE_TIMER)
-                    .putExtra(ActionReceiver.EXTRA_HABIT_ID, running.habit.id),
+                    .setData(android.net.Uri.parse("dothabits://pause/$runId/${running.timerGeneration}"))
+                    .putExtra(ActionReceiver.EXTRA_HABIT_ID, running.habit.id)
+                    .putExtra(ActionReceiver.EXTRA_RUN_ID, runId)
+                    .putExtra(AlarmReceiver.EXTRA_GENERATION, running.timerGeneration),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             val h = running.habit
             val dismiss = PendingIntent.getBroadcast(
-                context, runId.toInt(),
+                context, 2,
                 Intent(context, ActionReceiver::class.java).setAction(ActionReceiver.ACTION_DISMISS_TIMER)
-                    .putExtra(ActionReceiver.EXTRA_RUN_ID, runId),
+                    .setData(android.net.Uri.parse("dothabits://dismiss/$runId/${running.timerGeneration}"))
+                    .putExtra(ActionReceiver.EXTRA_RUN_ID, runId)
+                    .putExtra(AlarmReceiver.EXTRA_GENERATION, running.timerGeneration),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-            val goal = TimerMath.formatDuration(h.dailyGoalUnits)
+            val duration = TimerMath.formatDuration(running.tileSessionProgress!!.totalSeconds)
             val text = if (h.sessions > 1) {
                 val n = (TimerMath.sessionsDone(running.value, h.sessionSeconds, h.sessions) + 1).coerceAtMost(h.sessions)
-                context.getString(R.string.timer_session, n, h.sessions, goal)
-            } else context.getString(R.string.timer_single, goal)
+                context.getString(R.string.timer_session, n, h.sessions, duration)
+            } else context.getString(R.string.timer_single, duration)
             val n = NotificationCompat.Builder(context, CH_TIMER)
                 .setSmallIcon(R.drawable.ic_stat_dot)
                 .setContentTitle(h.name)
@@ -120,7 +130,7 @@ object Notifications {
                 .setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(endMs)
-                .setTimeoutAfter((endMs - System.currentTimeMillis()).coerceAtLeast(1L))
+                .setTimeoutAfter((expiresAt - nowMs).coerceAtLeast(1L))
                 .setShowWhen(true)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
@@ -132,19 +142,8 @@ object Notifications {
             nm.notify(ID_TIMER, n)
         }
 
-        val review = snapshot.habits.filter { it.needsReview }
-        if (review.isEmpty() || !canPost(context)) nm.cancel(ID_REVIEW)
-        else nm.notify(
-            ID_REVIEW,
-            NotificationCompat.Builder(context, CH_REVIEW)
-                .setSmallIcon(R.drawable.ic_stat_dot)
-                .setContentTitle(context.getString(R.string.review_title))
-                .setContentText(context.getString(R.string.review_text, review.joinToString { it.habit.name }))
-                .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.review_text, review.joinToString { it.habit.name })))
-                .setContentIntent(openApp(context, review.first().habit.id))
-                .setAutoCancel(true)
-                .build(),
-        )
+        // Remove a recovery notification left by an older app version.
+        nm.cancel(ID_REVIEW)
     }
 
     /** A timer stopped itself at the end of a session. [done] is whole sessions finished today. */

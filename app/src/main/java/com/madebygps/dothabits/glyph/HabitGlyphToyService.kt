@@ -97,7 +97,6 @@ class HabitGlyphToyService : Service() {
                     val snapshot = app.repository.snapshot(data)
                     val habit = snapshot.glyphHabit(data.settings.glyphHabitId)
                     fastTick = habit?.timerRunning == true || habit?.hasData == false
-                    if (habit?.timerRunning == true) app.repository.touchAlive()
                     val frame = GlyphFrames.habit(snapshot, data.settings.glyphHabitId, System.currentTimeMillis() / 1_000L)
                     if (last?.contentEquals(frame) != true || aod != lastAod) {
                         manager?.pushMonochromeFrame(applicationContext, frame)

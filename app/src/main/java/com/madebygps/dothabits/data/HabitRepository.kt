@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
+import androidx.room.withTransaction
 import com.madebygps.dothabits.domain.CompletionPolicy
 import com.madebygps.dothabits.domain.Habit
 import com.madebygps.dothabits.domain.HabitHistory
@@ -50,10 +51,11 @@ sealed interface HoldResult {
 }
 
 class HabitRepository(
-    private val dao: HabitDao,
+    private val database: DotDatabase,
     private val settingsStore: SettingsStore,
     private val contentResolver: ContentResolver,
 ) {
+    private val dao = database.dao()
     /** Invoked after every write so widgets, reminders, notifications and the Glyph refresh. */
     var onDataChanged: (suspend () -> Unit)? = null
 
@@ -63,8 +65,14 @@ class HabitRepository(
     private val writeLock = Mutex()
 
     val raw: Flow<RawData> = combine(
-        dao.observeHabits(), dao.observeEntries(), dao.observeSessions(), dao.observeSteps(), settingsStore.settings,
-    ) { h, e, s, st, set -> RawData(h, e, s, st, set) }
+        database.invalidationTracker.createFlow("habits", "entries", "timer_sessions", "steps_days"),
+        settingsStore.settings,
+    ) { _, settings ->
+        // Completion changes both sessions and credit. Never expose a half-old combined snapshot.
+        database.withTransaction {
+            RawData(dao.habits(), dao.allEntries(), dao.allSessions(), dao.allSteps(), settings)
+        }
+    }
 
     fun zone(): ZoneId = ZoneId.systemDefault()
 
@@ -72,20 +80,15 @@ class HabitRepository(
 
     private fun clockNow() = TimerMath.ClockReading(System.currentTimeMillis(), SystemClock.elapsedRealtime(), bootCount())
 
-    /** Running sessions measure duration on the monotonic clock; see [TimerMath.rebasedStartMs]. */
-    private fun TimerSessionEntity.rebased(clock: TimerMath.ClockReading): TimerSessionEntity =
-        when {
-            state != SessionState.RUNNING.name || endMs != null -> this
-            bootCount != clock.bootCount -> copy(state = SessionState.NEEDS_REVIEW.name)
-            else -> copy(startMs = TimerMath.rebasedStartMs(startMs, startElapsedMs, clock))
-        }
-
     fun histories(data: RawData, now: Instant = Instant.now()): List<HabitHistory> {
         val zone = zone()
         return HistoryAssembler.assemble(
             habits = data.habits.map { it.toDomain() },
             entries = data.entries.map { it.toDomain() },
-            sessions = clockNow().let { c -> data.sessions.map { it.rebased(c).toDomain() } },
+            sessions = clockNow().let { c ->
+                data.sessions.filter { it.state == SessionState.CLOSED.name || it.bootCount == c.bootCount }
+                    .map { TimerMath.project(it.toDomain(), c) }
+            },
             stepsByDay = data.steps.associate { LocalDate.ofEpochDay(it.epochDay) to it.steps },
             today = now.atZone(zone).toLocalDate(),
             zone = zone,
@@ -103,7 +106,6 @@ class HabitRepository(
 
     private fun ticker(period: Long) = flow {
         while (true) {
-            touchAlive()
             emit(Instant.now())
             delay(period)
         }
@@ -125,11 +127,11 @@ class HabitRepository(
                 check(dao.count() < MAX_HABITS) { "Limit of $MAX_HABITS habits reached" }
                 dao.insert(habit.copy(position = dao.maxPosition() + 1).toEntity())
             } else {
-                val clock = clockNow()
-                val stopped = if (habit.type != HabitType.TIMED)
-                    dao.runningSessions().filter { it.habitId == habit.id }.map { it.closedAt(clock) }
-                else emptyList()
-                dao.updateHabitWithSessions(habit.toEntity(), stopped)
+                database.withTransaction {
+                    if (habit.type != HabitType.TIMED)
+                        dao.unfinishedSessions().filter { it.habitId == habit.id }.forEach { dao.deleteSession(it.id) }
+                    dao.update(habit.toEntity())
+                }
                 habit.id
             }
         }
@@ -210,7 +212,7 @@ class HabitRepository(
         changed()
     }
 
-    /** Sets total completed sessions on a day without exposing or altering internal time records. */
+    /** Absolute completed credit edit. Never reads or modifies an unfinished timer. */
     suspend fun setTimerCompletions(habitId: Long, date: LocalDate, completedSessions: Long) {
         writeLock.withLock {
             val clock = clockNow()
@@ -219,13 +221,8 @@ class HabitRepository(
             require(!date.isAfter(now.atZone(zone).toLocalDate())) { "Cannot log the future" }
             val habit = dao.habit(habitId)?.toDomain() ?: return
             require(habit.type == HabitType.TIMED)
-            val recorded = TimerMath.secondsOnDay(
-                dao.sessions(habitId).map { it.rebased(clock).toDomain() }, date, zone, now,
-            )
-            val manual = dao.entriesOn(habitId, date.toEpochDay()).sumOf { it.amount }
-            val adjustment = TimerMath.completionAdjustment(recorded, manual, habit.sessionSeconds, completedSessions)
-            // replaceDay accepts signed values. A negative offset overrides recorded completions.
-            dao.replaceDay(habitId, date.toEpochDay(), adjustment, clock.wallMs)
+            require(completedSessions >= 0)
+            dao.replaceDay(habitId, date.toEpochDay(), Math.multiplyExact(completedSessions, habit.sessionSeconds), clock.wallMs)
         }
         changed()
     }
@@ -235,24 +232,16 @@ class HabitRepository(
 
     // ---- Timers ---------------------------------------------------------------------------
 
-    /** Close a run now, or at its session limit if that has already passed. */
-    private fun TimerSessionEntity.closedAt(clock: TimerMath.ClockReading): TimerSessionEntity {
-        val r = rebased(clock)
-        if (r.state == SessionState.NEEDS_REVIEW.name) return r
-        val end = minOf(clock.wallMs, r.limitSeconds?.let { r.startMs + it * 1000 } ?: Long.MAX_VALUE)
-        return r.copy(state = SessionState.CLOSED.name, endMs = maxOf(r.startMs, end), lastAliveMs = clock.wallMs)
-    }
-
     /**
-     * Starts a run for the rest of the current session (a full session when the previous one
-     * ended). Only one timer runs at a time; any other running timer is paused.
+     * Resume the same planned session, or create one with the current configured duration.
+     * Only one timer runs at a time; switching pauses the previous logical session.
      */
     suspend fun startTimer(habitId: Long) {
         changeTimer(habitId, start = true)
     }
 
-    suspend fun pauseTimer(habitId: Long) {
-        changeTimer(habitId, start = false)
+    suspend fun pauseTimer(habitId: Long, sessionId: Long? = null, generation: Long? = null) {
+        changeTimer(habitId, start = false, sessionId = sessionId, generation = generation)
     }
 
     /** Returns true when started, false when paused, or null if the habit is no longer timed. */
@@ -260,139 +249,80 @@ class HabitRepository(
 
     private data class TimerChange(val started: Boolean?, val stateChanged: Boolean, val finished: List<Long>)
 
-    private suspend fun changeTimer(habitId: Long, start: Boolean?): Boolean? {
+    private suspend fun changeTimer(habitId: Long, start: Boolean?, sessionId: Long? = null, generation: Long? = null): Boolean? {
         val result = writeLock.withLock {
-            val clock = clockNow()
-            val maintained = maintainTimersLocked(clock, touch = false)
-            val habit = dao.habit(habitId)?.toDomain()
-            if (habit == null || habit.type != HabitType.TIMED || habit.sessionSeconds <= 0) {
-                Log.w("DotHabitsTimer", "Ignoring timer control for non-timed or missing habit id=$habitId")
-                return@withLock TimerChange(null, maintained.stateChanged, maintained.finished)
+            database.withTransaction {
+                val clock = clockNow()
+                if (sessionId != null) {
+                    val expected = dao.session(sessionId)?.toDomain()
+                    if (expected == null || generation == null ||
+                        !TimerMath.matchesCallback(expected, sessionId, generation) || expected.habitId != habitId)
+                        return@withTransaction TimerChange(null, false, emptyList())
+                }
+                val maintained = maintainTimersLocked(clock)
+                val habit = dao.habit(habitId)?.toDomain()
+                if (habit == null || habit.type != HabitType.TIMED || habit.sessionSeconds <= 0) {
+                    Log.w("DotHabitsTimer", "Ignoring timer control for non-timed or missing habit id=$habitId")
+                    return@withTransaction TimerChange(null, maintained.stateChanged, maintained.finished)
+                }
+                val unfinished = dao.unfinishedSessions().map { it.toDomain() }
+                val ownRun = unfinished.firstOrNull { it.habitId == habitId && it.state == SessionState.RUNNING }
+                val shouldStart = start ?: (ownRun == null)
+                if (shouldStart && ownRun == null) {
+                    val plan = TimerMath.startSession(habitId, habit.sessionSeconds, unfinished, clock, zone())
+                    plan.updates.forEach { dao.updateSession(it.toEntity()) }
+                    plan.newSession?.let { dao.insertSession(it.toEntity()) }
+                } else if (!shouldStart && ownRun != null) {
+                    dao.updateSession(TimerMath.pause(ownRun, clock).toEntity())
+                }
+                TimerChange(shouldStart, maintained.stateChanged || (shouldStart != (ownRun != null)), maintained.finished)
             }
-            val running = dao.runningSessions()
-            val ownRun = running.firstOrNull { it.habitId == habitId }
-            val shouldStart = start ?: (ownRun == null)
-            if (shouldStart && ownRun == null) {
-                val date = Instant.ofEpochMilli(clock.wallMs).atZone(zone()).toLocalDate()
-                val value = dao.entriesOn(habitId, date.toEpochDay()).sumOf { it.amount } +
-                    TimerMath.secondsOnDay(
-                        dao.sessions(habitId).map { it.rebased(clock).toDomain() },
-                        date, zone(), Instant.ofEpochMilli(clock.wallMs),
-                    )
-                dao.writeSessions(
-                    running.map { it.closedAt(clock) },
-                    TimerSessionEntity(
-                        habitId = habitId, startMs = clock.wallMs, endMs = null, state = SessionState.RUNNING.name,
-                        lastAliveMs = clock.wallMs, bootCount = clock.bootCount, startElapsedMs = clock.elapsedMs,
-                        limitSeconds = TimerMath.sessionRemaining(value, habit.sessionSeconds),
-                    ),
-                )
-            } else if (!shouldStart && ownRun != null) {
-                dao.writeSessions(listOf(ownRun.closedAt(clock)))
-            }
-            TimerChange(shouldStart, maintained.stateChanged || (shouldStart != (ownRun != null)), maintained.finished)
         }
         if (result.stateChanged) changed()
         if (result.finished.isNotEmpty()) onSessionsFinished?.invoke(result.finished)
         return result.started
     }
 
-    /**
-     * Persist runs that reached the end of their session (the alarm normally does this on time;
-     * the app and Glyph Toy also call it so a late alarm never shows a stale running timer).
-     * Returns the habit ids that finished a session.
-     */
-    suspend fun finishElapsedSessions(refreshSurfaces: Boolean = true): List<Long> =
-        maintainTimers(touch = false, refreshSurfaces = refreshSurfaces)
-
     private data class TimerMaintenance(val stateChanged: Boolean, val finished: List<Long>)
 
-    private suspend fun maintainTimersLocked(clock: TimerMath.ClockReading, touch: Boolean): TimerMaintenance {
+    private suspend fun maintainTimersLocked(clock: TimerMath.ClockReading): TimerMaintenance {
         val finished = mutableListOf<Long>()
         var stateChanged = false
-        val updates = dao.runningSessions().mapNotNull { s ->
-            val r = s.rebased(clock)
-            val limitAt = r.limitSeconds?.let { r.startMs + it * 1000 }
-            when {
-                r.state == SessionState.NEEDS_REVIEW.name -> {
-                    stateChanged = true
-                    r
-                }
-                limitAt != null && clock.wallMs >= limitAt -> {
-                    stateChanged = true
-                    finished.add(r.habitId)
-                    r.copy(state = SessionState.CLOSED.name, endMs = limitAt, lastAliveMs = limitAt)
-                }
-                touch && (clock.wallMs - s.lastAliveMs >= 1000 || r.startMs != s.startMs) ->
-                    r.copy(lastAliveMs = clock.wallMs)
-                else -> null
+        dao.unfinishedSessions().forEach { row ->
+            val s = row.toDomain()
+            val change = TimerMath.settle(s, clock, zone())
+            if (change.session != s) {
+                if (change.session == null) dao.deleteSession(s.id)
+                else dao.updateSession(change.session.toEntity())
+                stateChanged = true
+            }
+            change.credit?.let { credit ->
+                dao.insertEntry(EntryEntity(habitId = credit.habitId, epochDay = credit.date.toEpochDay(),
+                    amount = credit.amount, createdAtMs = credit.createdAt.toEpochMilli()))
+                finished.add(s.habitId)
             }
         }
-        if (updates.isNotEmpty()) dao.writeSessions(updates)
         return TimerMaintenance(stateChanged, finished)
     }
 
-    private suspend fun maintainTimers(touch: Boolean, refreshSurfaces: Boolean = true): List<Long> {
-        val result = writeLock.withLock { maintainTimersLocked(clockNow(), touch) }
+    /** Shared lifecycle entry point, also used by timer commands inside their transaction. */
+    suspend fun maintainTimers(refreshSurfaces: Boolean = true, sessionId: Long? = null, generation: Long? = null): List<Long> {
+        val result = writeLock.withLock {
+            database.withTransaction {
+                if (sessionId != null) {
+                    val s = dao.session(sessionId)?.toDomain()
+                    if (s == null || generation == null || !TimerMath.matchesCallback(s, sessionId, generation))
+                        return@withTransaction TimerMaintenance(false, emptyList())
+                }
+                maintainTimersLocked(clockNow())
+            }
+        }
         if (result.stateChanged && refreshSurfaces) changed()
         if (result.finished.isNotEmpty()) onSessionsFinished?.invoke(result.finished)
         return result.finished
     }
 
-    suspend fun sessions(habitId: Long) = clockNow().let { c -> dao.sessions(habitId).map { it.rebased(c).toDomain() } }
-
-    /**
-     * Wall clock was changed (manually or by network time). Persist running sessions' start in the
-     * new wall-clock frame so elapsed time stays what the monotonic clock measured.
-     */
-    suspend fun rebaseRunningTimers() {
-        val clock = clockNow()
-        val changedAny = writeLock.withLock {
-            dao.runningSessions().map { s ->
-                val r = s.rebased(clock)
-                if (r.startMs != s.startMs) dao.updateSession(r.copy(lastAliveMs = clock.wallMs))
-                r.startMs != s.startMs
-            }.any { it }
-        }
-        if (changedAny) changed()
-    }
-
-    /**
-     * Reboot detection. Any RUNNING session from an earlier boot is moved to NEEDS_REVIEW;
-     * until resolved it only counts up to its last confirmed-alive time (never over-counts).
-     * Returns the number of sessions that need review.
-     */
-    suspend fun reconcileAfterBoot(): Int {
-        val boot = bootCount()
-        val stale = writeLock.withLock {
-            dao.runningSessions().filter { it.bootCount != boot }.onEach {
-                dao.updateSession(it.copy(state = SessionState.NEEDS_REVIEW.name))
-            }
-        }
-        if (stale.isNotEmpty()) changed()
-        return dao.reviewSessions().size
-    }
-
-    /** Record that running sessions are confirmed alive now (any wake-up of the app). */
-    suspend fun touchAlive() {
-        maintainTimers(touch = true)
-    }
-
-    /** Resolve an interrupted session: keep until [end] (clamped to sensible bounds) or discard. */
-    suspend fun resolveReview(sessionId: Long, end: Instant?) {
-        writeLock.withLock {
-            val s = dao.session(sessionId) ?: return
-            if (end == null) dao.deleteSession(sessionId)
-            else {
-                val latest = minOf(System.currentTimeMillis(), s.limitSeconds?.let { s.startMs + it * 1000 } ?: Long.MAX_VALUE)
-                val endMs = end.toEpochMilli().coerceIn(s.startMs, maxOf(s.startMs, latest))
-                dao.updateSession(s.copy(state = SessionState.CLOSED.name, endMs = endMs))
-            }
-        }
-        changed()
-    }
-
-    suspend fun pendingReviews() = dao.reviewSessions().map { it.toDomain() }
+    suspend fun sessions(habitId: Long) = dao.sessions(habitId).map { it.toDomain() }
 
     // ---- Steps cache ----------------------------------------------------------------------
 

@@ -5,18 +5,15 @@
     <string name="build_modified"> (modified)</string>
     <string name="channel_reminders">Habit reminders</string>
     <string name="channel_timer">Running timer</string>
-    <string name="channel_review">Timer needs review</string>
     <string name="channel_session_done">Timer session finished</string>
-    <string name="timer_session">Session %1$d of %2$d · goal %3$s</string>
-    <string name="timer_single">Goal %1$s</string>
+    <string name="timer_session">Session %1$d of %2$d · %3$s</string>
+    <string name="timer_single">Session · %1$s</string>
     <string name="pause">Pause</string>
     <string name="glyph_progress_title">Live timer progress</string>
     <string name="glyph_progress_notifications_off">Notifications are off</string>
     <string name="glyph_progress_live_off">Live Updates are off</string>
     <string name="glyph_progress_live_on">Live Updates allowed</string>
     <string name="glyph_progress_help">Enable Dot Habits in the phone\'s Settings &gt; Glyph &gt; Glyph Progress for a glanceable running session. The Timers toy still controls start, pause and timer selection.</string>
-    <string name="review_title">Timer interrupted by restart</string>
-    <string name="review_text">%1$s: the phone restarted while timing. Choose how much time to keep.</string>
     <string name="session_done_title" tools:ignore="PluralsCandidate">%1$s · session %2$d of %3$d done</string>
     <string name="session_finished_title">%1$s · session finished</string>
     <string name="session_done_text">Timer stopped. Start the next session when you\'re ready.</string>

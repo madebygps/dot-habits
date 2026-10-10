@@ -18,7 +18,13 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Help:** contextual `?` links to the shared **Settings › How Dot Habits works** guide, covering progress, schedules, streaks, timers, steps, history and display controls.
 - **Statistics:** 30/60/90-day or all-time completion rate, weekly bars and a by-weekday chart.
 - **Reminders** on scheduled days that aren't done yet.
-- **Widgets** (display only): a six-tile grid, and a resizable single-habit widget with the same type-specific progress as the app.
+- **Widgets** (display only): a six-tile grid, and a resizable single-habit widget with the same
+  type-specific progress as the app. Larger rounded-square tiles and
+  icons replace visible habit names; roomy sizes keep progress/status text. Habit names remain available to TalkBack.
+  Choose **Framed** (opaque background with subtle corners) or **Transparent** (tiles directly on
+  your wallpaper) for **Grid** or **Single Habit** in the widget picker: four resizable choices.
+  Transparent tiles may be harder to see on busy wallpapers.
+  Widget progress borders and fills follow the selected highlight color, with fills behind borders.
 - **Glyph Toys:** Habit shows a selected habit's icon and progress (display only); Timers has countdowns,
   long press to start or pause, and hold for 2 s to switch timer. Enable either or both.
 - **Glyph Progress:** running sessions also publish an Android 16 Live Update so Nothing OS can display

@@ -22,18 +22,24 @@ internal object WidgetColors {
 
     private fun dayNight(day: Color, night: Color): GlanceColorProvider = ColorProvider(day, night)
 
-    fun tone(tone: RingBitmaps.Tone): GlanceColorProvider = when (tone) {
+    fun tone(tone: RingBitmaps.Tone, highlight: Color): GlanceColorProvider = when (tone) {
         RingBitmaps.Tone.FOREGROUND -> foreground
+        RingBitmaps.Tone.HIGHLIGHT -> GlanceColorProvider(highlight)
         RingBitmaps.Tone.DIM -> dim
         RingBitmaps.Tone.BACKGROUND -> background
     }
 }
 
 @Composable
-internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int) {
-    // All four widget variants use the shared tile masks; launch actions stay on the whole widget.
+internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int, highlight: Color) {
     val layers = RingBitmaps.layers(t, sizePx)
     Box(GlanceModifier.size(size)) {
+        Image(
+            ImageProvider(layers.fill),
+            null,
+            modifier = GlanceModifier.size(size),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone, highlight)),
+        )
         Image(
             ImageProvider(layers.track),
             null,
@@ -44,13 +50,13 @@ internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int) {
             ImageProvider(layers.progress),
             null,
             modifier = GlanceModifier.size(size),
-            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone)),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone, highlight)),
         )
         Image(
             ImageProvider(layers.icon),
             HabitLabels.accessibility(t),
             modifier = GlanceModifier.size(size),
-            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.iconTone)),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.iconTone, highlight)),
         )
     }
 }

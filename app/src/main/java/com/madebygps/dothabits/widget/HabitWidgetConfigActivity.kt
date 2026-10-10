@@ -57,6 +57,18 @@ class HabitWidgetConfigActivity : ComponentActivity() {
             finish()
             return
         }
+        val provider = AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider
+        val widget = when (provider?.className) {
+            HabitTransparentWidgetReceiver::class.java.name,
+            -> TransparentHabitWidget()
+            HabitWidgetReceiver::class.java.name,
+            -> HabitWidget()
+            else -> {
+                android.util.Log.w("DotHabitsWidget", "Cannot configure widget=$widgetId provider=$provider")
+                finish()
+                return
+            }
+        }
         val app = dotApp
         setContent {
             val settings by app.settings.settings.let { flow ->
@@ -79,7 +91,7 @@ class HabitWidgetConfigActivity : ComponentActivity() {
                                         scope.launch {
                                             val glanceId = GlanceAppWidgetManager(app).getGlanceIdBy(widgetId)
                                             updateAppWidgetState(app, glanceId) { it[HabitWidget.HABIT_ID] = t.habit.id }
-                                            HabitWidget().update(app, glanceId)
+                                            widget.update(app, glanceId)
                                             setResult(RESULT_OK, result)
                                             finish()
                                         }

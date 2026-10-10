@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -31,7 +32,6 @@ import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
@@ -53,7 +53,7 @@ internal data class SingleLayout(
     val showCaption: Boolean,
 ) {
     companion object {
-        private const val PADDING_DP = 8f
+        private const val PADDING_DP = 12f
 
         fun forSize(widthDp: Float, heightDp: Float): SingleLayout {
             val w = (widthDp - 2 * PADDING_DP).coerceAtLeast(16f)
@@ -64,19 +64,21 @@ internal data class SingleLayout(
                 w >= 220f && h >= 220f -> SingleWidgetPresentation.LARGE
                 else -> SingleWidgetPresentation.STACKED
             }
+            val showCaption = presentation == SingleWidgetPresentation.LARGE ||
+                (presentation == SingleWidgetPresentation.WIDE && w >= 220f) ||
+                (presentation == SingleWidgetPresentation.STACKED && h >= 190f)
+            val textDp = 14f + if (showCaption) 14f else 0f
             val ringDp = when (presentation) {
                 SingleWidgetPresentation.COMPACT -> minOf(w, h)
-                SingleWidgetPresentation.WIDE -> minOf(h, w * 0.34f)
-                SingleWidgetPresentation.STACKED -> minOf(w, h * 0.62f)
-                SingleWidgetPresentation.LARGE -> minOf(w * 0.58f, h * 0.58f)
+                SingleWidgetPresentation.WIDE -> minOf(h, w * 0.48f)
+                SingleWidgetPresentation.STACKED -> minOf(w, h - textDp - 6f) * 0.90f
+                SingleWidgetPresentation.LARGE -> minOf(w, h - textDp - 10f) * 0.90f
             }.coerceAtLeast(16f)
             return SingleLayout(
                 presentation = presentation,
                 ringDp = ringDp,
                 showDetail = presentation != SingleWidgetPresentation.COMPACT,
-                showCaption = presentation == SingleWidgetPresentation.LARGE ||
-                    (presentation == SingleWidgetPresentation.WIDE && w >= 220f) ||
-                    (presentation == SingleWidgetPresentation.STACKED && h >= 190f),
+                showCaption = showCaption,
             )
         }
     }
@@ -85,10 +87,10 @@ internal data class SingleLayout(
 /**
  * Display-only widget for one habit the user picks when placing it (and can change with the
  * launcher's reconfigure option). Compact sizes show the ring, while larger sizes add the habit
- * name, progress detail and essential state captions. Tapping opens that habit's detail
+ * progress detail and essential state captions, without a visible habit name. Tapping opens that habit's detail
  * screen; there are no completion or timer controls.
  */
-class HabitWidget : GlanceAppWidget() {
+open class HabitWidget(private val transparent: Boolean = false) : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
 
@@ -97,11 +99,13 @@ class HabitWidget : GlanceAppWidget() {
         try {
             val app = context.dotApp
             val initialData = app.repository.raw.first()
+            val initialSettings = app.settings.current()
             val density = context.resources.displayMetrics.density
             provideContent {
                 val data by app.repository.raw.collectAsState(initialData)
+                val settings by app.settings.settings.collectAsState(initialSettings)
                 val habitId = currentState<Preferences>()[HABIT_ID]
-                Content(app.repository.snapshot(data), habitId, density)
+                Content(app.repository.snapshot(data), habitId, density, Color(settings.highlight))
             }
         } finally {
             Log.i("DotHabitsWidget", "widget=habit id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
@@ -109,7 +113,7 @@ class HabitWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun Content(snapshot: TodaySnapshot, habitId: Long?, density: Float) {
+    private fun Content(snapshot: TodaySnapshot, habitId: Long?, density: Float, highlight: Color) {
         val size = LocalSize.current
         val layout = SingleLayout.forSize(size.width.value, size.height.value)
         val t = snapshot.habits.firstOrNull { it.habit.id == habitId }
@@ -118,9 +122,8 @@ class HabitWidget : GlanceAppWidget() {
         } else actionStartActivity<MainActivity>()
         Box(
             modifier = GlanceModifier.fillMaxSize()
-                .background(WidgetColors.background)
-                .cornerRadius(28.dp)
-                .padding(8.dp)
+                .let { if (transparent) it else it.background(WidgetColors.background).cornerRadius(8.dp) }
+                .padding(12.dp)
                 .clickable(open),
             contentAlignment = Alignment.Center,
         ) {
@@ -135,18 +138,18 @@ class HabitWidget : GlanceAppWidget() {
             val detail = HabitLabels.detail(t)
             val habitCaption = HabitLabels.caption(t).takeUnless { it == detail }.orEmpty()
             when (layout.presentation) {
-                SingleWidgetPresentation.COMPACT -> HabitRingImage(t, layout.ringDp.dp, px)
+                SingleWidgetPresentation.COMPACT -> HabitRingImage(t, layout.ringDp.dp, px, highlight)
                 SingleWidgetPresentation.WIDE -> Row(
                     modifier = GlanceModifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HabitRingImage(t, layout.ringDp.dp, px)
+                    HabitRingImage(t, layout.ringDp.dp, px, highlight)
                     Spacer(GlanceModifier.width(10.dp))
                     Column(
                         modifier = GlanceModifier.defaultWeight(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        HabitText(t.habit.name, detail, habitCaption, layout, large = false)
+                        HabitText(detail, habitCaption, layout, large = false)
                     }
                 }
                 SingleWidgetPresentation.STACKED,
@@ -156,10 +159,9 @@ class HabitWidget : GlanceAppWidget() {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HabitRingImage(t, layout.ringDp.dp, px)
+                    HabitRingImage(t, layout.ringDp.dp, px, highlight)
                     Spacer(GlanceModifier.height(if (layout.presentation == SingleWidgetPresentation.LARGE) 10.dp else 6.dp))
                     HabitText(
-                        t.habit.name,
                         detail,
                         habitCaption,
                         layout,
@@ -172,17 +174,11 @@ class HabitWidget : GlanceAppWidget() {
 
     @Composable
     private fun HabitText(
-        name: String,
         detail: String,
         habitCaption: String,
         layout: SingleLayout,
         large: Boolean,
     ) {
-        Text(
-            name.uppercase(),
-            style = caption(if (large) 14 else 12, WidgetColors.foreground),
-            maxLines = 1,
-        )
         if (layout.showDetail && detail.isNotEmpty()) {
             Text(detail, style = caption(if (large) 10 else 9, WidgetColors.dim), maxLines = 1)
         }
@@ -204,6 +200,8 @@ class HabitWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = HabitWidget()
 }
 
-class HabitWideWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = HabitWidget()
+class TransparentHabitWidget : HabitWidget(transparent = true)
+
+class HabitTransparentWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = TransparentHabitWidget()
 }

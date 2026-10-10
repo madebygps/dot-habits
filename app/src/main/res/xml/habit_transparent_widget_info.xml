@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Wide preset for one configured habit. The responsive HabitWidget renderer continues adapting
-  if the user resizes it after placement.
--->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="110dp"
+    android:minWidth="50dp"
     android:minHeight="50dp"
     android:minResizeWidth="50dp"
     android:minResizeHeight="50dp"
-    android:targetCellWidth="2"
+    android:targetCellWidth="1"
     android:targetCellHeight="1"
     android:maxResizeWidth="420dp"
     android:maxResizeHeight="420dp"
@@ -18,5 +14,5 @@
     android:configure="com.madebygps.dothabits.widget.HabitWidgetConfigActivity"
     android:widgetFeatures="reconfigurable"
     android:initialLayout="@layout/glance_default_loading_layout"
-    android:previewImage="@drawable/habit_widget_preview"
-    android:description="@string/habit_widget_description" />
+    android:previewImage="@drawable/habit_widget_transparent_preview"
+    android:description="@string/transparent_habit_widget_description" />

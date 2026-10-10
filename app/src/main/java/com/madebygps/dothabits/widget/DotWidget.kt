@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -27,7 +28,6 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontFamily
 import androidx.glance.text.Text
@@ -42,21 +42,19 @@ import kotlinx.coroutines.flow.first
 
 /**
  * How habits are arranged for a given widget size. One-row widgets show as many habits as fit;
- * larger widgets show the first page of six with progressively richer captions.
+ * larger widgets show the first page of six with supporting captions, without habit names.
  */
 internal data class WidgetGrid(
     val cols: Int,
     val rows: Int,
     val ringDp: Float,
-    val labels: Boolean,
     val captions: Boolean,
     val visibleHabits: Int,
     /** Column width: columns are packed and centred rather than spread across the full width. */
     val cellDp: Float,
 ) {
     companion object {
-        private const val PADDING_DP = 10f
-        private const val LABEL_DP = 13f
+        private const val PADDING_DP = 14f
         private const val CAPTION_DP = 12f
 
         fun forSize(widthDp: Float, heightDp: Float): WidgetGrid {
@@ -71,16 +69,14 @@ internal data class WidgetGrid(
             }
             val cellW = w / cols
             val cellH = h / rows
-            val labels = cellH >= 72f && cellW >= 68f
             val captions = cellH >= 96f && cellW >= 88f
-            val textDp = (if (labels) LABEL_DP else 0f) + (if (captions) CAPTION_DP else 0f)
-            val ring = minOf(cellW, cellH - textDp) * 0.84f
+            val textDp = if (captions) CAPTION_DP else 0f
+            val ring = minOf(cellW, cellH - textDp) * 0.90f
             val ringDp = ring.coerceAtLeast(16f)
             return WidgetGrid(
                 cols = cols,
                 rows = rows,
                 ringDp = ringDp,
-                labels = labels,
                 captions = captions,
                 visibleHabits = cols * rows,
                 cellDp = cellW,
@@ -94,7 +90,7 @@ internal data class WidgetGrid(
  * The whole widget opens the app; there are intentionally no completion or timer controls.
  * SizeMode.Exact so rings are sized to the launcher's real cell size on Phone (3).
  */
-class DotWidget : GlanceAppWidget() {
+open class DotWidget(private val transparent: Boolean = false) : GlanceAppWidget() {
 
     override val sizeMode = SizeMode.Exact
 
@@ -103,10 +99,12 @@ class DotWidget : GlanceAppWidget() {
         try {
             val app = context.dotApp
             val initialData = app.repository.raw.first()
+            val initialSettings = app.settings.current()
             val density = context.resources.displayMetrics.density
             provideContent {
                 val data by app.repository.raw.collectAsState(initialData)
-                Content(app.repository.snapshot(data), density)
+                val settings by app.settings.settings.collectAsState(initialSettings)
+                Content(app.repository.snapshot(data), density, Color(settings.highlight))
             }
         } finally {
             Log.i("DotHabitsWidget", "widget=grid id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
@@ -114,16 +112,15 @@ class DotWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun Content(snapshot: TodaySnapshot, density: Float) {
+    private fun Content(snapshot: TodaySnapshot, density: Float, highlight: Color) {
         val size = LocalSize.current
         val grid = WidgetGrid.forSize(size.width.value, size.height.value)
         val habits = snapshot.habits.take(minOf(HABITS_PER_PAGE, grid.visibleHabits))
-        val px = (grid.ringDp * density).toInt().coerceIn(48, 256)
+        val px = (grid.ringDp * density).toInt().coerceIn(48, 512)
         Box(
             modifier = GlanceModifier.fillMaxSize()
-                .background(WidgetColors.background)
-                .cornerRadius(28.dp)
-                .padding(10.dp)
+                .let { if (transparent) it else it.background(WidgetColors.background).cornerRadius(8.dp) }
+                .padding(14.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             contentAlignment = Alignment.Center,
         ) {
@@ -146,8 +143,7 @@ class DotWidget : GlanceAppWidget() {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (t != null) {
-                                    HabitRingImage(t, grid.ringDp.dp, px)
-                                    if (grid.labels) Text(t.habit.name.uppercase(), style = caption(9, WidgetColors.dim), maxLines = 1)
+                                    HabitRingImage(t, grid.ringDp.dp, px, highlight)
                                     if (grid.captions) {
                                         val text = HabitLabels.caption(t).ifEmpty { HabitLabels.detail(t) }
                                         if (text.isNotEmpty()) {
@@ -171,6 +167,8 @@ class DotWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DotWidget()
 }
 
-class DotLargeWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = DotWidget()
+class TransparentDotWidget : DotWidget(transparent = true)
+
+class DotTransparentWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = TransparentDotWidget()
 }

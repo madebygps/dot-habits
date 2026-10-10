@@ -23,7 +23,7 @@ class DotApp : Application() {
 
     val database: DotDatabase by lazy {
         Room.databaseBuilder(this, DotDatabase::class.java, "dot-habits.db")
-            .addMigrations(DotDatabase.MIGRATION_4_5).build()
+            .build()
     }
     val settings: SettingsStore by lazy { SettingsStore(this) }
     val repository: HabitRepository by lazy {

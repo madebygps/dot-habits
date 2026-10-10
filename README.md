@@ -13,7 +13,7 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **Streaks:** a single muted dot inside a home tile marks a nonzero current streak (no numeric caption or personal-best marker). Detail shows compact Current/Best values and a seven-day or seven-week dot chain, with truthful rest, partial, pending and current-period states. Daily streaks skip unscheduled days; weekly streaks reset only when a week closes below their goal.
 - **Detail:** a centered hero keeps tile progress and timer controls. Timers show current-session remaining time plus session position and the session's captured duration. No recovery review or internal timestamps.
 - **History:** expand Calendar and tap today or a past date for completion progress. Timer days show only completed-session count (for example, “1 of 2 sessions complete”) and **Adjust completion**. Set the absolute integer count, up or down, including activity done without the timer. No manual-minutes editor, session list or session deletion. Count/slip corrections remain available; steps stay read-only.
-- **Timer corrections:** saving replaces the day's completed credit with `completedSessions × currentSessionSeconds`. There are no offsets against active time. Running and paused sessions retain their own captured duration, remaining milliseconds, monotonic anchor and original day regardless of history or goal edits. All surfaces, streaks and statistics use corrected history. History remains in seconds and is evaluated against the current habit duration, so changing duration can change historical completion counts, but never an unfinished timer. Schema v5 converts legacy closed intervals plus manual corrections into whole completed credit per day and discards legacy unfinished runs and fractional credit. Unfinished rows never automatically earn migrated credit, even when their last checkpoint reaches the limit. Explicit legacy corrections are decoded at their creation timestamp (reviewed runs are also capped at their last-alive checkpoint), never advanced to migration time. Legacy rows lack complete duration-edit and boot history: the largest recorded daily session limit is a conservative conversion heuristic, not proof of each original session's duration.
+- **Timer corrections:** saving replaces the day's completed credit with `completedSessions × currentSessionSeconds`. There are no offsets against active time. Running and paused sessions retain their own captured duration, remaining milliseconds, monotonic anchor and original day regardless of history or goal edits. All surfaces, streaks and statistics use corrected history. History remains in seconds and is evaluated against the current habit duration, so changing duration can change historical completion counts, but never an unfinished timer.
 - **Habit statistics:** collapsed and read-only, with past scheduled days met and recent closed-opportunity completion rate. Current/Best remain visible above the recent chain.
 - **Help:** contextual `?` links to the shared **Settings › How Dot Habits works** guide, covering progress, schedules, streaks, timers, steps, history and display controls.
 - **Statistics:** 30/60/90-day or all-time completion rate, weekly bars and a by-weekday chart.
@@ -44,6 +44,14 @@ Gradle builds and installs the debug APK directly. There is no Python installer,
 install lock, Git fetch, or ancestry check. Coordinate installs across sessions to avoid overwriting
 another session's changes. With multiple devices, select the intended Nothing Phone (3) using
 `ANDROID_SERIAL=SERIAL ./gradlew :app:installDebug`.
+
+This sole-user installation supports only the current database schema, **v5**. Existing v5 data is
+preserved during updates; older database versions fail safely rather than being migrated or reset.
+Before installing across a schema change, stop the app and privately back up its database and WAL/SHM
+files. Any required one-off conversion must use a separate local copy, with integrity and data
+preservation validated before restoring it. Keep the original backup unchanged. Never clear app data
+or use a destructive migration to resolve a version mismatch. Historical migration code and schemas
+are not maintained in this repository.
 
 Settings > About and the home About sheet show the commit, a modified marker for uncommitted changes,
 and build time in the phone's locale, time zone, and 12/24-hour format. The APK retains the UTC

@@ -91,5 +91,11 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - `widget/` and `glyph/` render from the same `TodaySnapshot` the app uses.
 - `ui/` — custom Compose UI (black, dot-matrix accents).
 
-Room schema JSON in `app/schemas/` is committed; bump the DB version and add a migration for schema changes.
+Only the current Room schema (v5) in `app/schemas/` is committed and supported. This is a sole-user
+installation: there are no legacy migrations or destructive fallbacks. Unsupported database versions
+must fail safely, never reset user data. Before a schema change, stop the app and privately back up
+the installed database with its WAL/SHM files. Bump the version for structural changes and perform
+any required one-off conversion on a separate local copy, validating integrity and data preservation
+before restoring it. Keep the original backup unchanged; do not retain historical compatibility code
+or private data in the repository.
 Add or update unit tests in `app/src/test` whenever domain rules change.

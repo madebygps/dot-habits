@@ -253,6 +253,7 @@ fun SettingsScreen(vm: MainViewModel) {
 
             Divider()
             Header("ABOUT")
+            BuildDetails()
             Text(
                 "Offline. No account, no tracking. Your data stays on this phone.",
                 style = MaterialTheme.typography.bodySmall,

@@ -65,15 +65,15 @@ class SnapshotAndPolicyTest {
         assertEquals(TodayStatus.DONE, withData.status)
     }
 
-    @Test fun timedHabitCombinesSessionsAndManualTime() {
+    @Test fun timedHabitShowsCountdownWithoutCreditingRunningTime() {
         val start = today.atTime(17, 30).atZone(zone).toInstant()
-        val sessions = listOf(TimerSession(1, read.id, start, null, SessionState.RUNNING, start, 1))
+        val sessions = listOf(TimerSession(1, read.id, start, null, SessionState.RUNNING, 1, 3600, epochDay = today.toEpochDay()))
         val s = snapshot(listOf(entry(read, today, 15 * 60L)), sessions)
         val r = s.habits.first { it.habit.id == read.id }
-        assertEquals(45 * 60L, r.value)
+        assertEquals(15 * 60L, r.value)
         assertTrue(r.timerRunning)
         assertEquals(read.id, s.activeTimer?.habitId)
-        assertEquals(45 * 60L, s.activeTimer?.todaySeconds)
+        assertEquals(15 * 60L, s.activeTimer?.todaySeconds)
     }
 
     @Test fun workoutWeekDoneMarksTodayDone() {
@@ -143,12 +143,11 @@ class SnapshotAndPolicyTest {
         assertEquals("", HabitLabels.caption(rest))
         assertTrue(HabitLabels.hasStreakMarker(rest))
         assertEquals(false, HabitLabels.hasStreakMarker(base.copy(streak = StreakStats(0, 34, StreakUnit.DAYS))))
-        assertEquals("NEEDS REVIEW", HabitLabels.caption(active.copy(needsReview = true)))
     }
 
     @Test fun runningTimerCaptionShowsSessionCountdown() {
         val r = snapshot().habits.first { it.habit.id == read.id }
-            .copy(value = 23 * 60L, timerRunning = true, streak = StreakStats(4, 4, StreakUnit.DAYS))
+            .copy(value = 23 * 60L, timerRunning = true, runningSecondsRemaining = 37 * 60L, streak = StreakStats(4, 4, StreakUnit.DAYS))
         assertEquals("37:00 LEFT", HabitLabels.caption(r))
     }
 
@@ -173,7 +172,7 @@ class SnapshotAndPolicyTest {
         assertEquals(false, idle.activeTimer?.running)
         // A running timer always wins.
         val start = today.atTime(17, 50).atZone(zone).toInstant()
-        val run = TimerSession(1, read.id, start, null, SessionState.RUNNING, start, 1, limitSeconds = 60 * 60L)
+        val run = TimerSession(1, read.id, start, null, SessionState.RUNNING, 1, limitSeconds = 60 * 60L, epochDay = today.toEpochDay())
         val running = snapshot(sessions = listOf(run), habits = listOf(read, deepWork))
         assertEquals(read.id, running.activeTimer?.habitId)
         assertEquals(50 * 60L, running.activeTimer?.sessionRemaining)
@@ -182,11 +181,12 @@ class SnapshotAndPolicyTest {
         assertNull(done.activeTimer)
     }
 
-    @Test fun expiredRunIsNoLongerRunning() {
+    @Test fun expiredRunWaitsForLifecycleCommitWithoutCreditingTimeInDisplay() {
         val start = today.atTime(17, 0).atZone(zone).toInstant()
-        val run = TimerSession(1, deepWork.id, start, null, SessionState.RUNNING, start, 1, limitSeconds = 25 * 60L)
+        val run = TimerSession(1, deepWork.id, start, null, SessionState.RUNNING, 1, limitSeconds = 25 * 60L, epochDay = today.toEpochDay())
         val d = snapshot(sessions = listOf(run), habits = listOf(deepWork)).habits.single()
-        assertEquals(false, d.timerRunning)
-        assertEquals(25 * 60L, d.value)
+        assertEquals(true, d.timerRunning)
+        assertEquals(0L, d.value)
+        assertEquals(0L, d.sessionRemaining)
     }
 }

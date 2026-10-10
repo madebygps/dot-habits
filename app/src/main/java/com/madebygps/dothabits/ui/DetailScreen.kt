@@ -1,6 +1,5 @@
 package com.madebygps.dothabits.ui
 
-import android.os.SystemClock
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,13 +65,10 @@ import com.madebygps.dothabits.domain.HabitRules
 import com.madebygps.dothabits.domain.HabitToday
 import com.madebygps.dothabits.domain.HabitTileState
 import com.madebygps.dothabits.domain.HabitType
-import com.madebygps.dothabits.domain.SessionState
 import com.madebygps.dothabits.domain.StreakUnit
 import com.madebygps.dothabits.domain.TimerMath
-import com.madebygps.dothabits.domain.TimerSession
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
@@ -80,7 +76,6 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-private val timeFmt = DateTimeFormatter.ofPattern("HH:mm")
 private val dayFmt = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,9 +115,6 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             item { Hero(today, vm) }
-            history.sessions.filter { it.state == SessionState.NEEDS_REVIEW }.forEach { s ->
-                item(key = "review-${s.id}") { ReviewCard(s) { end -> vm.viewModelScopeLaunch { vm.repository.resolveReview(s.id, end) } } }
-            }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     val unit = if (today.streak.unit == StreakUnit.WEEKS) "WK" else "D"
@@ -384,36 +376,6 @@ private fun DateActivity(h: HabitHistory, day: LocalDate, today: LocalDate, onEd
                 Text(if (h.habit.type == HabitType.TIMED) "Adjust completion" else "Edit day")
             }
         }
-    }
-}
-
-@Composable
-private fun ReviewCard(s: TimerSession, onResolve: (Instant?) -> Unit) {
-    val zone = ZoneId.systemDefault()
-    val bootAt = Instant.now().minusMillis(SystemClock.elapsedRealtime())
-    val highlight = LocalHighlight.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .border(1.dp, highlight, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-    ) {
-        Text("TIMER INTERRUPTED BY RESTART", style = MaterialTheme.typography.labelMedium, color = highlight)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "Started ${s.start.atZone(zone).format(dayFmt)} ${s.start.atZone(zone).format(timeFmt)}. " +
-                "Last confirmed running at ${s.lastAlive.atZone(zone).format(dayFmt)} ${s.lastAlive.atZone(zone).format(timeFmt)}. " +
-                "Only time up to the last confirmation is counted until you choose.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Spacer(Modifier.height(10.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onResolve(s.lastAlive) }) { Text("Keep to ${s.lastAlive.atZone(zone).format(timeFmt)}") }
-            if (bootAt.isAfter(s.lastAlive)) {
-                OutlinedButton(onClick = { onResolve(bootAt) }) { Text("To restart ${bootAt.atZone(zone).format(timeFmt)}") }
-            }
-        }
-        TextButton(onClick = { onResolve(null) }) { Text("Discard session") }
     }
 }
 

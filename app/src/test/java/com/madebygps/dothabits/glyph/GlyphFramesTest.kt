@@ -33,9 +33,9 @@ class GlyphFramesTest {
         val histories = h.map { (habit, secs) ->
             val sessions = if (habit == running) {
                 val start = now.minusSeconds(runMinutes * 60)
-                listOf(TimerSession(9, habit.id, start, null, SessionState.RUNNING, start, 1, limitSeconds = habit.sessionSeconds))
+                listOf(TimerSession(9, habit.id, start, null, SessionState.RUNNING, 1, limitSeconds = habit.sessionSeconds, epochDay = today.toEpochDay()))
             } else emptyList()
-            HabitHistory(habit, mapOf(today to secs + if (habit == running) runMinutes * 60 else 0), sessions)
+            HabitHistory(habit, mapOf(today to secs), sessions)
         }
         return SnapshotBuilder.build(histories, today, DayOfWeek.MONDAY, now, pick)
     }

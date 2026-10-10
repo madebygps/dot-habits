@@ -34,24 +34,24 @@ data class StepsSyncResult(
 
 /**
  * Deferred, battery-friendly refresh (every 15 minutes, WorkManager's minimum; battery-not-low).
- * Pulls step totals from Health Connect when background reads are permitted, confirms running
- * timers are alive, and refreshes widgets. While the app is open, steps are also read every
+ * Pulls step totals from Health Connect when background reads are permitted, settles expired
+ * timers through their lifecycle owner, and refreshes widgets. Steps are also read every
  * minute (Health Connect writes phone steps at most about once a minute).
  */
 class StepsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val startedAtMs = System.currentTimeMillis()
         val started = SystemClock.elapsedRealtime()
-        var touchAliveMs = 0L
+        var timerLifecycleMs = 0L
         var stepSyncMs = 0L
         var refreshRequestMs = 0L
         var syncResult = StepsSyncResult(StepsSyncOutcome.READ_FAILED)
         var completion = "success"
         val app = applicationContext.dotApp
         try {
-            val touchStarted = SystemClock.elapsedRealtime()
-            app.repository.touchAlive()
-            touchAliveMs = SystemClock.elapsedRealtime() - touchStarted
+            val timerStarted = SystemClock.elapsedRealtime()
+            TimerLifecycle.settle(app)
+            timerLifecycleMs = SystemClock.elapsedRealtime() - timerStarted
 
             val syncStarted = SystemClock.elapsedRealtime()
             syncResult = syncSteps(applicationContext, days = 2, requireBackgroundRead = true)
@@ -80,7 +80,7 @@ class StepsSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
                 daysRead = syncResult.daysRead,
                 cacheChanged = syncResult.cacheChanged,
                 hadRunningTimer = syncResult.hasRunningTimer,
-                touchAliveMs = touchAliveMs,
+                timerLifecycleMs = timerLifecycleMs,
                 stepSyncMs = stepSyncMs,
                 refreshRequestMs = refreshRequestMs,
                 totalMs = SystemClock.elapsedRealtime() - started,

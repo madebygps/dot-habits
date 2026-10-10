@@ -40,7 +40,7 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   Glyph Progress. Keep the toy as the button control surface; Glyph Progress is complementary passive monitoring.
   Use AndroidX compatibility APIs: the platform promotion builder method requires API 36.1, while Phone (3)
   builds may run 36.0. No private APIs or vendor-app impersonation.
-- Timer progress reflects the current session, not the whole daily goal. Cancel on pause, completion or review;
+- Timer progress reflects the current session, not the whole daily goal. Cancel on pause, completion or discard;
   set notification timeout to session end, respect dismissal for that run, and keep the separate completion alert.
   Refresh progress at most every 15 seconds while running and the process is alive; no foreground service,
   wake lock or additional polling alarms. Android owns the ticking chronometer; progress-bar refresh is best effort
@@ -49,7 +49,9 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   anew from rounded daily totals. Duration/history edits and midnight must not wrap a still-running progress bar.
   Nothing OS owns Glyph Progress's visual effects: numeric progress increasing is not proof of a static
   LED animation, and the SDK does not expose a system-progress animation toggle.
-- Timed habits are sessions × minutes; each run carries `limitSeconds` and stops itself at the session end.
+- Timed habits are sessions × minutes. A logical session captures `limitSeconds`, remaining milliseconds,
+  original credit day and a monotonic running anchor. Pause/resume retains that session; duration, goal and
+  history edits never change an unfinished session. Only full planned completion writes credit, once.
 - Glyph output stays monochrome; the highlight colour applies to app + widgets only.
 - No Essential Space integration and no Essential Key remapping.
 - Never fabricate data: no seeded history, no estimated steps. Missing step data shows "NO STEP DATA".
@@ -66,8 +68,12 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
   Weekly streaks reset only when a week closes below goal; the creation week is a grace week.
 - Avoid habits succeed while slips ≤ allowance; going over breaks the streak immediately.
 - Hold logs +1 up to the daily target; on timers it starts/pauses; on steps it does nothing.
-- Timers: wall-clock `start`/`end` + monotonic anchor, so no foreground service. Split at midnight. After a reboot
-  (`BOOT_COUNT` changed) a running session needs review and counts only to its last confirmed-alive time.
+- Timers: wall-clock anchor + monotonic elapsed time, so no foreground service. Unfinished running and
+  paused sessions are discarded at midnight or after reboot (`BOOT_COUNT` changed); no split, carry,
+  partial credit, heartbeat checkpoint or recovery review. A delayed completion before midnight retains
+  its original day's credit. One timer runs at a time; starting another pauses the previous session.
+- Manual timer history edits replace the day's completed credit in seconds; no signed offsets against
+  active time. Current habit duration evaluates historical seconds but never alters an unfinished timer.
 - Alarms only for reminders, midnight rollover and session end; use `setWindow` (Phone (3) gave
   `setAndAllowWhileIdle` a 1-hour window). `SCHEDULE_EXACT_ALARM` optional, never `USE_EXACT_ALARM`.
 - Stats count closed opportunities only (scheduled past days, or finished weeks); today and the current week never count.
@@ -79,9 +85,17 @@ export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 - `data/` — Room (habits, entries, timer sessions, cached daily steps), DataStore settings,
   Health Connect reads. `HabitRepository` is the only writer and calls `onDataChanged` after writes.
 - `system/` — notifications, AlarmManager (reminders, midnight, timer session end), receivers, WorkManager.
-  `TimerNotificationUpdater` serializes fresh snapshots for Live Updates and updates only while runs exist.
+  `TimerLifecycle` owns process-local deadline/midnight expiry and OS alarm reconciliation. App and Glyph
+  commands share transactional repository transitions; stale session/generation callbacks are ignored.
+  `TimerNotificationUpdater` only displays fresh snapshots, at most every 15 seconds while runs exist.
 - `widget/` and `glyph/` render from the same `TodaySnapshot` the app uses.
 - `ui/` — custom Compose UI (black, dot-matrix accents).
 
-Room schema JSON in `app/schemas/` is committed; bump the DB version and add a migration for schema changes.
+Only the current Room schema (v5) in `app/schemas/` is committed and supported. This is a sole-user
+installation: there are no legacy migrations or destructive fallbacks. Unsupported database versions
+must fail safely, never reset user data. Before a schema change, stop the app and privately back up
+the installed database with its WAL/SHM files. Bump the version for structural changes and perform
+any required one-off conversion on a separate local copy, validating integrity and data preservation
+before restoring it. Keep the original backup unchanged; do not retain historical compatibility code
+or private data in the repository.
 Add or update unit tests in `app/src/test` whenever domain rules change.

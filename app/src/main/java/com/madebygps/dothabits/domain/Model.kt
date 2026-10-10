@@ -90,14 +90,12 @@ data class Habit(
         }
 }
 
-enum class SessionState { RUNNING, CLOSED, NEEDS_REVIEW }
+enum class SessionState { RUNNING, PAUSED, CLOSED }
 
 /**
- * One timer run for a TIMED habit. [limitSeconds] is how long this run may last (what was left
- * of the current session when it started); null for runs from before sessions existed. Time is stored as wall-clock instants so
- * nothing depends on the process staying alive. [lastAlive] is the latest moment the
- * app positively observed the session running; after a reboot the session is put into
- * NEEDS_REVIEW and only time up to [lastAlive] is counted until the user decides.
+ * One planned session, spanning any number of pauses on its original day. Duration is
+ * captured on creation; neither habit edits nor history edits change it. [start] is the
+ * current running segment's wall anchor; [startElapsedMs] measures it within one boot.
  */
 data class TimerSession(
     val id: Long = 0,
@@ -105,9 +103,12 @@ data class TimerSession(
     val start: Instant,
     val end: Instant?,
     val state: SessionState,
-    val lastAlive: Instant,
     val bootCount: Int,
-    val limitSeconds: Long? = null,
+    val limitSeconds: Long,
+    val remainingMs: Long = limitSeconds * 1000,
+    val epochDay: Long,
+    val startElapsedMs: Long? = null,
+    val generation: Long = 1,
 )
 
 /** A manual log (completion, slip, or backfilled amount) on a given day. */
@@ -115,7 +116,7 @@ data class Entry(
     val id: Long = 0,
     val habitId: Long,
     val date: LocalDate,
-    /** Count for COUNT habits; signed seconds adjustment to recorded credit for TIMED habits. */
+    /** Count for COUNT habits; completed credit in seconds for TIMED habits. */
     val amount: Long,
     val createdAt: Instant,
 )

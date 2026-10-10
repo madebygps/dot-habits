@@ -26,13 +26,8 @@ object HistoryAssembler {
                 HabitType.STEPS -> values.putAll(stepsByDay)
                 else -> {
                     entriesByHabit[habit.id].orEmpty().forEach { values.merge(it.date, it.amount, Long::plus) }
-                    if (habit.type == HabitType.TIMED) {
-                        TimerMath.secondsByDay(sessionsByHabit[habit.id].orEmpty(), zone, now)
-                            .forEach { (d, s) -> values.merge(d, s, Long::plus) }
-                    }
                 }
             }
-            // Timer offsets may be negative: clamp only after combining with recorded credit.
             values.replaceAll { _, v -> v.coerceAtLeast(0L) }
             HabitHistory(
                 habit = habit,

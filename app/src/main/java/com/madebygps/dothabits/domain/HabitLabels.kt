@@ -33,7 +33,7 @@ object HabitLabels {
 
     /** Only essential state captions; a single in-tile dot represents an active streak. */
     fun caption(t: HabitToday): String = when {
-        t.needsReview -> "NEEDS REVIEW"
+        t.timerPaused -> "${TimerMath.formatClock(t.sessionRemaining)} PAUSED"
         t.habit.type == HabitType.STEPS && !t.hasData -> "NO STEP DATA"
         t.habit.isNegative -> "${t.value}/${t.habit.dailyTarget} SLIPS" +
             if (t.status == TodayStatus.SLIPPED) " · SLIPPED" else ""

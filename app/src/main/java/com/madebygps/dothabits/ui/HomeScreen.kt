@@ -320,7 +320,7 @@ private fun HabitCell(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.width(ring + 40.dp),
             textAlign = TextAlign.Center,
-            color = if (t.needsReview) highlight else Palette.Muted,
+            color = if (t.timerPaused) highlight else Palette.Muted,
         )
     }
 }

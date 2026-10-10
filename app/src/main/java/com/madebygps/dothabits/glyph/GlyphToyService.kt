@@ -192,25 +192,12 @@ class GlyphToyService : Service() {
         s.launch {
             var last: IntArray? = null
             var lastForce = 0L
-            var previous: ActiveTimer? = null
             combine(app.repository.raw, tick, aodTick, choice, redraw) { data, _, aod, pick, force ->
                 Triple(data, aod + force, pick)
             }.collect { (data, force, pick) ->
                 val snap = app.repository.snapshot(data, preferredTimer = pick)
                 val t = snap.activeTimer
                 running = t?.running == true
-                if (running) app.repository.touchAlive()
-                if (previous?.running == true && t?.habitId != previous?.habitId || (previous?.running == true && t?.running == false)) {
-                    // Persist elapsed sessions; the notification handles the completion alert.
-                    val prev = previous!!
-                    val finishedNow = prev.endsAt?.let { !java.time.Instant.now().isBefore(it) }
-                        ?: (snap.habits.firstOrNull { it.habit.id == prev.habitId }
-                            ?.let { TimerMath.sessionsDone(it.value, it.habit.sessionSeconds, it.habit.sessions) > prev.sessionsDone } == true)
-                    if (finishedNow) {
-                        app.repository.finishElapsedSessions()
-                    }
-                }
-                previous = t
                 val frame = GlyphFrames.render(snap)
                 // Skip identical frames, but always answer an AOD tick (or redraw) with a frame.
                 if (!overlay && (last?.contentEquals(frame) != true || force != lastForce)) {

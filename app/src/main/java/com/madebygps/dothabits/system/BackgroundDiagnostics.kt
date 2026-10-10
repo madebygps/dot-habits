@@ -15,7 +15,7 @@ data class BackgroundSyncDiagnostic(
     val daysRead: Int,
     val cacheChanged: Boolean,
     val hadRunningTimer: Boolean,
-    val touchAliveMs: Long,
+    val timerLifecycleMs: Long,
     val stepSyncMs: Long,
     val refreshRequestMs: Long,
     val totalMs: Long,
@@ -23,7 +23,7 @@ data class BackgroundSyncDiagnostic(
     fun asLine(): String =
         "at=${Instant.ofEpochMilli(startedAtMs)} workId=$workId attempt=$runAttempt completion=$completion " +
             "outcome=$outcome daysRead=$daysRead cacheChanged=$cacheChanged runningTimer=$hadRunningTimer " +
-            "touchAliveMs=$touchAliveMs stepSyncMs=$stepSyncMs refreshRequestMs=$refreshRequestMs totalMs=$totalMs"
+            "timerLifecycleMs=$timerLifecycleMs stepSyncMs=$stepSyncMs refreshRequestMs=$refreshRequestMs totalMs=$totalMs"
 }
 
 object BackgroundDiagnostics {

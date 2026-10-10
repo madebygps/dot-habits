@@ -11,6 +11,7 @@ import com.madebygps.dothabits.system.Notifications
 import com.madebygps.dothabits.system.Refresh
 import com.madebygps.dothabits.system.StepsSyncWorker
 import com.madebygps.dothabits.system.TimerNotificationUpdater
+import com.madebygps.dothabits.system.TimerLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,10 +21,13 @@ import kotlinx.coroutines.launch
 class DotApp : Application() {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    val database: DotDatabase by lazy { Room.databaseBuilder(this, DotDatabase::class.java, "dot-habits.db").build() }
+    val database: DotDatabase by lazy {
+        Room.databaseBuilder(this, DotDatabase::class.java, "dot-habits.db")
+            .build()
+    }
     val settings: SettingsStore by lazy { SettingsStore(this) }
     val repository: HabitRepository by lazy {
-        HabitRepository(database.dao(), settings, contentResolver).also { repo ->
+        HabitRepository(database, settings, contentResolver).also { repo ->
             repo.onDataChanged = { Refresh.afterDataChange(this, reason = "repository-write") }
             repo.onSessionsFinished = { ids ->
                 val snap = repo.currentSnapshot()
@@ -42,9 +46,9 @@ class DotApp : Application() {
         Notifications.createChannels(this)
         StepsSyncWorker.schedule(this)
         appScope.launch {
-            repository.reconcileAfterBoot()
-            repository.finishElapsedSessions()
-            repository.touchAlive()
+            TimerLifecycle.settle(this@DotApp)
+            Refresh.afterDataChange(this@DotApp, reason = "process-start")
+            TimerLifecycle.start(this@DotApp)
             TimerNotificationUpdater.start(this@DotApp)
         }
     }

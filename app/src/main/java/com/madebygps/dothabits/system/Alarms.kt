@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import com.madebygps.dothabits.domain.ReminderPlanner
 import com.madebygps.dothabits.domain.TodaySnapshot
-import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -52,14 +51,28 @@ object Alarms {
         // Midnight rollover (+2s so "today" is unambiguously the new date)
         val midnight = now.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() + 2000
         val midnightPi = pi(context, RC_MIDNIGHT, AlarmReceiver.ACTION_MIDNIGHT)
-        if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC, midnight, midnightPi)
+        if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, midnight, midnightPi)
         // setAndAllowWhileIdle gets a ~1h batching window on Phone (3) (seen in dumpsys alarm); bound it to 10 min.
-        else am.setWindow(AlarmManager.RTC, midnight, WINDOW_MS, midnightPi)
+        else am.setWindow(AlarmManager.RTC_WAKEUP, midnight, WINDOW_MS, midnightPi)
 
         // End of the running timer's session
         val running = snapshot.habits.firstOrNull { it.timerRunning }
-        val goalAt = running?.let { it.timerEndsAt ?: Instant.now().plusSeconds(it.sessionRemaining) }
-        val goalPi = pi(context, RC_GOAL, AlarmReceiver.ACTION_TIMER_GOAL, running?.habit?.id ?: 0)
+        val goalAt = running?.timerEndsAt
+        val prefs = context.getSharedPreferences("timer-alarm", Context.MODE_PRIVATE)
+        fun timerPi(token: String): PendingIntent = PendingIntent.getBroadcast(
+            context, RC_GOAL, Intent(context, AlarmReceiver::class.java).setAction(AlarmReceiver.ACTION_TIMER_GOAL)
+                .setData(android.net.Uri.parse("dothabits://timer/$token"))
+                .putExtra(AlarmReceiver.EXTRA_SESSION_ID, token.substringBefore('/').toLong())
+                .putExtra(AlarmReceiver.EXTRA_GENERATION, token.substringAfter('/').toLong()),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        // Cancel the legacy fixed-identity alarm as well as the previously scheduled generation.
+        am.cancel(pi(context, RC_GOAL, AlarmReceiver.ACTION_TIMER_GOAL))
+        val token = running?.let { "${it.timerSessionId}/${it.timerGeneration}" }
+        prefs.getString("token", null)?.takeIf { it != token }?.let { am.cancel(timerPi(it)) }
+        prefs.edit().putString("token", token).apply()
+        if (token == null) return
+        val goalPi = timerPi(token)
         if (goalAt == null) am.cancel(goalPi)
         else if (canExact(context)) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), goalPi)
         else am.setWindow(AlarmManager.RTC_WAKEUP, goalAt.toEpochMilli(), WINDOW_MS, goalPi)

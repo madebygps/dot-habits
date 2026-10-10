@@ -85,14 +85,6 @@ androidComponents {
     }
 }
 
-tasks.configureEach {
-    if (name.startsWith("install")) {
-        doFirst {
-            error("Direct installs are disabled. Use python3 scripts/install_debug.py.")
-        }
-    }
-}
-
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }

@@ -9,23 +9,17 @@ Nothing OS 4.x / Android 16. Read "Product rules" below before changing behaviou
 export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 ./gradlew :app:testDebugUnitTest          # pure-JVM domain tests (fast)
 ./gradlew :app:assembleDebug :app:lintDebug
-python3 scripts/install_debug.py          # guarded install, only from the designated checkout
+./gradlew :app:installDebug               # build and install on the connected phone
 ```
 
-- Only the designated install checkout may update the connected Nothing Phone (3). Other sessions
-  build/test only and hand off their changes to that checkout; never install their APKs directly.
-  The first successful guarded install designates its checkout. Ownership is stored per phone under
-  `~/.local/state/dot-habits/`, with a shared lock to prevent concurrent installs.
-- After changes in the designated checkout, use `python3 scripts/install_debug.py`. It fetches
-  `origin/main`, rejects checkouts missing main or the installed commit, checks that sources did not
-  change during the build, and verifies the installed APK metadata. Fetch/build/device failures block
-  installation; report the blocker, never bypass it with `adb install` or Gradle install tasks.
-- Transfer ownership with `--claim` only when the user explicitly approves moving installation to
-  another checkout. Integrate the previous checkout's changes first; its owner must commit and install
-  a clean build before transferring a modified installed build. Use `--serial SERIAL` with multiple devices.
+- Use `./gradlew :app:installDebug` to build and install. There is no checkout ownership, install lock,
+  or Git freshness gate. Coordinate with other sessions before installing and preserve their changes;
+  ask before replacing a build whose changes are not included. Report build/device failures.
+- Install only on the intended Nothing Phone (3). With multiple devices, select it using
+  `ANDROID_SERIAL=SERIAL ./gradlew :app:installDebug`.
 - Settings > About and the home About sheet show the Git commit, modified marker and localized build time
   (phone locale, time zone and 12/24-hour preference). APK provenance retains the UTC timestamp.
-  No provenance on an older APK is a one-time bootstrap, not proof that its source is current.
+  Build metadata is informational, not an installation gate.
 - `compileSdk 37` (required by current AndroidX), `minSdk = targetSdk = 36`.
 - AGP 9 built-in Kotlin: do not add the `kotlin-android` plugin.
 - The Nothing GlyphMatrix SDK is committed at `app/libs/glyph-matrix-sdk-2.0.aar` (no Maven artifact

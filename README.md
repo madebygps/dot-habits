@@ -37,25 +37,18 @@ There is no consumer download or Play Store release yet. To install a developmen
 
 ```sh
 echo "sdk.dir=$ANDROID_HOME" > local.properties
-python3 scripts/install_debug.py
+./gradlew :app:installDebug
 ```
 
-The guarded installer designates one checkout per phone and serializes installs across sessions.
-It fetches `origin/main` and refuses a checkout missing either current main or the installed commit.
-Other sessions should build/test only, then hand their changes to the install checkout. Direct Gradle
-install tasks are disabled; do not bypass the guard with `adb install`. To explicitly transfer ownership,
-integrate the previous checkout's changes and run `python3 scripts/install_debug.py --claim`.
-For a modified installed build, its owner must commit the changes and install a clean build before
-ownership can transfer. With multiple devices, pass `--serial SERIAL`.
-The installer requires Python 3.9+ and `adb` on PATH, and fails closed if fetching or verification fails.
-Pulled APKs are verified in a short-lived directory under the checkout's ignored `build/` directory.
+Gradle builds and installs the debug APK directly. There is no Python installer, checkout ownership,
+install lock, Git fetch, or ancestry check. Coordinate installs across sessions to avoid overwriting
+another session's changes. With multiple devices, select the intended Nothing Phone (3) using
+`ANDROID_SERIAL=SERIAL ./gradlew :app:installDebug`.
 
 Settings > About and the home About sheet show the commit, a modified marker for uncommitted changes,
 and build time in the phone's locale, time zone, and 12/24-hour format. The APK retains the UTC
-timestamp and the same provenance for installation checks. Legacy APKs without
-metadata are accepted once to bootstrap this guard; it cannot establish their original source.
-The guard prevents stale ancestry and competing checkout installs, not bugs in newer changes or installs
-performed outside this workflow.
+timestamp. The build reads Git state for this informational metadata; it does not change Git state
+or use the metadata to gate installation.
 
 To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After installing, enable toys in
 **Settings › Glyph › Glyph Toys › Set up** and pick the Habit toy's habit under **Displayed habit**.

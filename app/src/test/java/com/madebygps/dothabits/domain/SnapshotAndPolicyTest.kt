@@ -131,13 +131,18 @@ class SnapshotAndPolicyTest {
         assertTrue(DotIcons.validate().isEmpty())
     }
 
-    @Test fun homeCaptionShowsStreakNotProgress() {
+    @Test fun homeStreakIsOnlyAMarkerWithAccessibleUnits() {
         val base = snapshot().habits.first { it.habit.id == creatine.id }
         val active = base.copy(streak = StreakStats(12, 20, StreakUnit.WEEKS), week = 2 to 4)
-        assertEquals("12W STREAK", HabitLabels.caption(active))
+        assertEquals("", HabitLabels.caption(active))
+        assertTrue(HabitLabels.hasStreakMarker(active))
+        assertTrue(HabitLabels.accessibility(active).contains("12 week streak"))
         assertEquals("", HabitLabels.caption(base.copy(streak = StreakStats(0, 34, StreakUnit.DAYS))))
         assertEquals("", HabitLabels.caption(base.copy(status = TodayStatus.REST, streak = StreakStats(0, 3, StreakUnit.DAYS))))
-        assertEquals("5D STREAK", HabitLabels.caption(base.copy(status = TodayStatus.REST, streak = StreakStats(5, 5, StreakUnit.DAYS))))
+        val rest = base.copy(status = TodayStatus.REST, streak = StreakStats(5, 5, StreakUnit.DAYS))
+        assertEquals("", HabitLabels.caption(rest))
+        assertTrue(HabitLabels.hasStreakMarker(rest))
+        assertEquals(false, HabitLabels.hasStreakMarker(base.copy(streak = StreakStats(0, 34, StreakUnit.DAYS))))
         assertEquals("NEEDS REVIEW", HabitLabels.caption(active.copy(needsReview = true)))
     }
 

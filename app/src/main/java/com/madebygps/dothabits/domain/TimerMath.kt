@@ -55,6 +55,23 @@ object TimerMath {
     fun sessionsDone(todaySeconds: Long, sessionSeconds: Long, sessions: Int): Int =
         if (sessionSeconds <= 0) 0 else (todaySeconds / sessionSeconds).toInt().coerceAtMost(sessions)
 
+    /**
+     * Absolute completed-session correction, stored as a signed seconds offset from internal
+     * recorded credit. Retains the credited fractional session; never changes a run or its limit.
+     * Replacing (not adding) this offset makes repeated corrections idempotent.
+     */
+    fun completionAdjustment(
+        recordedSeconds: Long,
+        manualSeconds: Long,
+        sessionSeconds: Long,
+        completedSessions: Long,
+    ): Long {
+        require(recordedSeconds >= 0 && sessionSeconds > 0 && completedSessions >= 0)
+        val credited = Math.addExact(recordedSeconds, manualSeconds).coerceAtLeast(0)
+        val desired = Math.addExact(Math.multiplyExact(completedSessions, sessionSeconds), credited % sessionSeconds)
+        return Math.subtractExact(desired, recordedSeconds)
+    }
+
     fun dayBounds(date: LocalDate, zone: ZoneId): Pair<Instant, Instant> =
         date.atStartOfDay(zone).toInstant() to date.plusDays(1).atStartOfDay(zone).toInstant()
 

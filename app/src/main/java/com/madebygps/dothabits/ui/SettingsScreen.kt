@@ -64,6 +64,7 @@ import com.madebygps.dothabits.R
 import com.madebygps.dothabits.data.HighlightPalette
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.glyph.GlyphSupport
+import com.madebygps.dothabits.domain.HabitGuide
 import com.madebygps.dothabits.system.Alarms
 import com.madebygps.dothabits.system.Notifications
 import com.madebygps.dothabits.system.Refresh
@@ -74,7 +75,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: MainViewModel) {
+fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
     val context = LocalContext.current
     val app = context.dotApp
     val scope = rememberCoroutineScope()
@@ -253,6 +254,7 @@ fun SettingsScreen(vm: MainViewModel) {
 
             Divider()
             Header("ABOUT")
+            TextButton(onClick = onGuide) { Text("How Dot Habits works") }
             Text(
                 "Offline. No account, no tracking. Your data stays on this phone.",
                 style = MaterialTheme.typography.bodySmall,
@@ -263,20 +265,7 @@ fun SettingsScreen(vm: MainViewModel) {
     }
 
     if (showToyHelp) {
-        AlertDialog(
-            onDismissRequest = { showToyHelp = false },
-            title = { Text("Glyph Toys") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("HABIT", style = MaterialTheme.typography.labelSmall)
-                    Text("Shows the selected habit's icon and progress.")
-                    Text("TIMERS", style = MaterialTheme.typography.labelSmall)
-                    Text("Long-press to start or pause. Hold for 2 seconds to switch timers.")
-                    Text(stringResource(R.string.glyph_progress_toy_help))
-                }
-            },
-            confirmButton = { TextButton(onClick = { showToyHelp = false }) { Text("OK") } },
-        )
+        GuideHelpDialog(listOf(HabitGuide.toyHelp), onDismiss = { showToyHelp = false }, onGuide = onGuide)
     }
     if (showHabitPicker) {
         fun pickHabit(id: Long?) {
@@ -347,7 +336,7 @@ private fun StepsSection(
         s.availability == HcAvailability.UPDATE_REQUIRED ->
             PermRow("Health Connect", "Needs an update", "UPDATE", onUpdate)
         !s.onDeviceCounting ->
-            PermRow("Step counting", "This phone can't count steps itself. Another app must add them to Health Connect.", "OPEN", onOpenHc)
+            PermRow("Step counting", "The phone's own step counter is unavailable. Other apps' totals are not used.", "OPEN", onOpenHc)
         !s.readGranted ->
             PermRow("Step counting", "Off. Counting starts when you allow it", "ALLOW", onRequest)
         else -> {

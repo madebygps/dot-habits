@@ -13,7 +13,6 @@
     <string name="glyph_progress_live_off">Live Updates are off</string>
     <string name="glyph_progress_live_on">Live Updates allowed</string>
     <string name="glyph_progress_help">Enable Dot Habits in the phone\'s Settings &gt; Glyph &gt; Glyph Progress for a glanceable running session. The Timers toy still controls start, pause and timer selection.</string>
-    <string name="glyph_progress_toy_help">Glyph Progress can show the running session while the phone is locked. Enable Dot Habits in the phone\'s Glyph Progress settings. The toy keeps its countdown and session ring; completion alerts use notifications.</string>
     <string name="review_title">Timer interrupted by restart</string>
     <string name="review_text">%1$s: the phone restarted while timing. Choose how much time to keep.</string>
     <string name="session_done_title" tools:ignore="PluralsCandidate">%1$s · session %2$d of %3$d done</string>

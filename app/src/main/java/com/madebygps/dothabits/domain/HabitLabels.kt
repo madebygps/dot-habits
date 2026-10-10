@@ -5,13 +5,13 @@ import java.text.NumberFormat
 /** Short, shared captions shown under habit tiles in the app and widgets. */
 object HabitLabels {
     fun accessibility(t: HabitToday): String = listOf(
-        t.habit.name, detail(t), caption(t), t.status.name.lowercase().replace('_', ' '),
+        t.habit.name, detail(t), caption(t), streak(t.streak), t.status.name.lowercase().replace('_', ' '),
     ).filter { it.isNotEmpty() }.distinct().joinToString(". ")
 
     fun streak(s: StreakStats): String = when {
         s.current <= 0 -> ""
-        s.unit == StreakUnit.WEEKS -> "${s.current}W STREAK"
-        else -> "${s.current}D STREAK"
+        s.unit == StreakUnit.WEEKS -> "${s.current} week streak"
+        else -> "${s.current} day streak"
     }
 
     fun detail(t: HabitToday): String {
@@ -31,17 +31,22 @@ object HabitLabels {
         }
     }
 
-    /**
-     * Caption under a home-screen tile. Today's progress is already visible in the tile, so this
-     * line shows the current streak or nothing. Best streaks live in Statistics; rest days are
-     * shown by the dimmed icon. Only states that need attention override the streak.
-     */
+    /** Only essential state captions; a single in-tile dot represents an active streak. */
     fun caption(t: HabitToday): String = when {
         t.needsReview -> "NEEDS REVIEW"
         t.habit.type == HabitType.STEPS && !t.hasData -> "NO STEP DATA"
         t.habit.isNegative -> "${t.value}/${t.habit.dailyTarget} SLIPS" +
             if (t.status == TodayStatus.SLIPPED) " · SLIPPED" else ""
         t.timerRunning -> "${TimerMath.formatClock(t.tileSessionProgress?.remainingSeconds ?: t.sessionRemaining)} LEFT"
-        else -> streak(t.streak)
+        else -> ""
+    }
+
+    fun hasStreakMarker(t: HabitToday): Boolean = t.streak.current > 0
+
+    fun holdAction(t: HabitToday): String? = when (CompletionPolicy.holdAction(t)) {
+        HoldAction.LOG_ONE -> if (t.habit.isNegative) "Log a slip" else "Log one completion"
+        HoldAction.TOGGLE_TIMER -> if (t.timerRunning) "Pause timer" else "Start timer"
+        HoldAction.NONE_ALREADY_DONE -> "Already complete"
+        HoldAction.NONE_AUTOMATIC -> null
     }
 }

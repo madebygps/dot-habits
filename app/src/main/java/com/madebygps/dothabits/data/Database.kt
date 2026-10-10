@@ -47,6 +47,7 @@ data class EntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val habitId: Long,
     val epochDay: Long,
+    /** Count/slips, or signed seconds adjustment to timer credit. */
     val amount: Long,
     val createdAtMs: Long,
 )

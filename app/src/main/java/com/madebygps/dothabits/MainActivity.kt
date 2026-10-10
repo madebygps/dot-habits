@@ -24,6 +24,7 @@ import com.madebygps.dothabits.ui.DetailScreen
 import com.madebygps.dothabits.ui.DotTheme
 import com.madebygps.dothabits.ui.EditHabitScreen
 import com.madebygps.dothabits.ui.HomeScreen
+import com.madebygps.dothabits.ui.GuideScreen
 import com.madebygps.dothabits.ui.MainViewModel
 import com.madebygps.dothabits.ui.SettingsScreen
 import com.madebygps.dothabits.ui.StatsScreen
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
                             habitId = it.arguments!!.getLong("id"),
                             onBack = { nav.popBackStack() },
                             onEdit = { id -> nav.navigate("edit/$id") },
+                            onGuide = { nav.navigate("guide") },
                         )
                     }
                     composable("edit/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) {
@@ -86,7 +88,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("stats") { StatsScreen(vm = vm, onOpen = { id -> nav.navigate("detail/$id") }) }
-                    composable("settings") { SettingsScreen(vm = vm) }
+                    composable("settings") { SettingsScreen(vm = vm, onGuide = { nav.navigate("guide") }) }
+                    composable("guide") { GuideScreen() }
                 }
             }
         }

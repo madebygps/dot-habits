@@ -83,7 +83,7 @@ internal data class SingleLayout(
 /**
  * Display-only widget for one habit the user picks when placing it (and can change with the
  * launcher's reconfigure option). Compact sizes show the ring, while larger sizes add the habit
- * name, progress detail and current streak or timer state. Tapping opens that habit's detail
+ * name, progress detail and essential state captions. Tapping opens that habit's detail
  * screen; there are no completion or timer controls.
  */
 class HabitWidget : GlanceAppWidget() {

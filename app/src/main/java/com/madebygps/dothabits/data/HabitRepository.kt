@@ -189,10 +189,34 @@ class HabitRepository(
         dao.deleteEntry(entryId); changed()
     }
 
-    /** History edit / backfill: replaces manual amount logged on [date] (count, or seconds for timers). */
+    /** History edit / backfill for counts and slips only. */
     suspend fun setManualAmount(habitId: Long, date: LocalDate, amount: Long) {
         require(!date.isAfter(LocalDate.now(zone()))) { "Cannot log the future" }
-        dao.replaceDay(habitId, date.toEpochDay(), amount.coerceAtLeast(0), System.currentTimeMillis())
+        writeLock.withLock {
+            val habit = dao.habit(habitId)?.toDomain() ?: return
+            require(habit.type == HabitType.COUNT)
+            dao.replaceDay(habitId, date.toEpochDay(), amount.coerceAtLeast(0), System.currentTimeMillis())
+        }
+        changed()
+    }
+
+    /** Sets total completed sessions on a day without exposing or altering internal time records. */
+    suspend fun setTimerCompletions(habitId: Long, date: LocalDate, completedSessions: Long) {
+        writeLock.withLock {
+            val clock = clockNow()
+            val zone = zone()
+            val now = Instant.ofEpochMilli(clock.wallMs)
+            require(!date.isAfter(now.atZone(zone).toLocalDate())) { "Cannot log the future" }
+            val habit = dao.habit(habitId)?.toDomain() ?: return
+            require(habit.type == HabitType.TIMED)
+            val recorded = TimerMath.secondsOnDay(
+                dao.sessions(habitId).map { it.rebased(clock).toDomain() }, date, zone, now,
+            )
+            val manual = dao.entriesOn(habitId, date.toEpochDay()).sumOf { it.amount }
+            val adjustment = TimerMath.completionAdjustment(recorded, manual, habit.sessionSeconds, completedSessions)
+            // replaceDay accepts signed values. A negative offset overrides recorded completions.
+            dao.replaceDay(habitId, date.toEpochDay(), adjustment, clock.wallMs)
+        }
         changed()
     }
 
@@ -285,10 +309,6 @@ class HabitRepository(
         if (changedAny) changed()
     }
 
-    suspend fun deleteSession(id: Long) {
-        dao.deleteSession(id); changed()
-    }
-
     /**
      * Reboot detection. Any RUNNING session from an earlier boot is moved to NEEDS_REVIEW;
      * until resolved it only counts up to its last confirmed-alive time (never over-counts).
@@ -310,12 +330,14 @@ class HabitRepository(
 
     /** Resolve an interrupted session: keep until [end] (clamped to sensible bounds) or discard. */
     suspend fun resolveReview(sessionId: Long, end: Instant?) {
-        val s = dao.session(sessionId) ?: return
-        if (end == null) dao.deleteSession(sessionId)
-        else {
-            val latest = minOf(System.currentTimeMillis(), s.limitSeconds?.let { s.startMs + it * 1000 } ?: Long.MAX_VALUE)
-            val endMs = end.toEpochMilli().coerceIn(s.startMs, maxOf(s.startMs, latest))
-            dao.updateSession(s.copy(state = SessionState.CLOSED.name, endMs = endMs))
+        writeLock.withLock {
+            val s = dao.session(sessionId) ?: return
+            if (end == null) dao.deleteSession(sessionId)
+            else {
+                val latest = minOf(System.currentTimeMillis(), s.limitSeconds?.let { s.startMs + it * 1000 } ?: Long.MAX_VALUE)
+                val endMs = end.toEpochMilli().coerceIn(s.startMs, maxOf(s.startMs, latest))
+                dao.updateSession(s.copy(state = SessionState.CLOSED.name, endMs = endMs))
+            }
         }
         changed()
     }

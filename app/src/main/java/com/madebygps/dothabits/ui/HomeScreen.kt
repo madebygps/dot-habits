@@ -261,8 +261,8 @@ private fun HabitCell(
                     .clip(RoundedCornerShape(percent = 18))
                     .semantics {
                         contentDescription = HabitLabels.accessibility(t)
-                        customActions = listOf(
-                            CustomAccessibilityAction("Complete") { onHold(t.habit.id); true },
+                        customActions = listOfNotNull(
+                            HabitLabels.holdAction(t)?.let { label -> CustomAccessibilityAction(label) { onHold(t.habit.id); true } },
                             CustomAccessibilityAction("Open details") { onOpen(t.habit.id); true },
                         )
                     }
@@ -287,6 +287,13 @@ private fun HabitCell(
             ) {
                 DotIcon(t.habit.icon, Modifier.size(ring * 0.40f), iconColor)
             }
+            if (HabitLabels.hasStreakMarker(t)) {
+                Box(
+                    Modifier.align(Alignment.Center).offset(y = ring * 0.30f)
+                        .size(5.dp).clip(CircleShape)
+                        .background(if (tile.solid) Color.Black else if (tile.dimmed) Palette.Dim else Palette.Muted),
+                )
+            }
             if (t.habit.type == HabitType.TIMED) {
                 PlayPauseButton(
                     running = t.timerRunning,
@@ -306,7 +313,7 @@ private fun HabitCell(
             modifier = Modifier.width(ring + 32.dp),
             textAlign = TextAlign.Center,
         )
-        Text(
+        if (caption.isNotEmpty()) Text(
             caption,
             style = MaterialTheme.typography.labelSmall,
             maxLines = 1,

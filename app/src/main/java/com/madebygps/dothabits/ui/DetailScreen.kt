@@ -193,7 +193,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
                 })
             }
             if (t.habit.type == HabitType.TIMED) {
-                PlayPauseButton(t.timerRunning, 48.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id, t.timerRunning) }
+                PlayPauseButton(t.timerRunning, 48.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id) }
             }
         }
         Spacer(Modifier.height(12.dp))

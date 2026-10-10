@@ -74,6 +74,11 @@ SDK does not expose the system renderer or an animation toggle, so the internal 
   so there is no earlier history. Steps sync about every 15 minutes in the background and every minute while the app is open.
 - **Timers** keep running when the app is closed or the screen is locked, and split at midnight. After a reboot, a
   timer that was running asks you to review its time instead of guessing.
+  Session lengths range from 1 to 300 minutes in one-minute steps; history corrections use completed-session counts.
+  A running session keeps its original deadline when you edit its goal or history, or when the day changes.
+  Switching a habit away from Timer pauses its run. While visible, the app confirms running time every second
+  so restart recovery retains the latest observed time; time while asleep remains conservative.
+  Short pause/resume runs accumulate before rounding to whole seconds.
 - **Live timer progress** refreshes at most every 15 seconds while the process is alive, without a
   foreground service, wake lock or polling alarm. Android ticks the countdown itself; progress-bar updates
   can pause during sleep or process eviction. The ongoing notification expires at session end even if
@@ -89,6 +94,8 @@ SDK does not expose the system renderer or an animation toggle, so the internal 
 - Both toys appear separately in Nothing's toy manager
 - Habit selection saves from the in-app picker and survives an app restart
 - The single-habit widget on the home screen
+- Timer pause/resume, session limits, notification Pause, background completion after process death, and restart review
+- One-minute timer controls and live goal/history edits retaining the running session's deadline
 - Debug Live Update recognized by system Glyph Progress; user confirmed locked-screen display,
   temporary Clock override via button, and automatic return to the AOD clock at probe completion
 - Production timer Live Update promoted by the OS; user confirmed toy start, locked-screen progress,
@@ -99,7 +106,6 @@ SDK does not expose the system renderer or an animation toggle, so the internal 
 - Habit toy's physical LED output
 - Glyph Toys on AOD
 - Battery use over a full day
-- Reboot with a timer running
 - Live timer progress reliability over longer background sessions and process eviction
 
 ## License

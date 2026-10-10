@@ -162,7 +162,7 @@ fun EditHabitScreen(vm: MainViewModel, habitId: Long, onDone: () -> Unit, onDele
                 }
                 HabitType.TIMED -> {
                     Stepper("Sessions per day", draft.sessions.toLong(), 1, 1, 12) { draft = draft.copy(sessions = it.toInt()) }
-                    Stepper("Minutes per session", draft.dailyTarget.toLong(), 5, 5, 300) { draft = draft.copy(dailyTarget = it.toInt()) }
+                    Stepper("Minutes per session", draft.dailyTarget.toLong(), 1, 1, 300) { draft = draft.copy(dailyTarget = it.toInt()) }
                     Text(
                         "Goal ${TimerMath.formatDuration(draft.dailyGoalUnits)} a day. The timer stops itself at the end of each session; pausing keeps the time you've done.",
                         style = MaterialTheme.typography.bodySmall,

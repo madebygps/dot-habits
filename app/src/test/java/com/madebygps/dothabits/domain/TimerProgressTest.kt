@@ -16,7 +16,7 @@ class TimerProgressTest {
         val sessions = if (running) listOf(
             TimerSession(
                 1, habit.id, now, null, SessionState.RUNNING, now, 1,
-                limitSeconds = habit.sessionSeconds,
+                limitSeconds = TimerMath.sessionRemaining(value, habit.sessionSeconds),
             ),
         ) else emptyList()
         return SnapshotBuilder.build(

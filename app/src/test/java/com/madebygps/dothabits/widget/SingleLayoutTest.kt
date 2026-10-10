@@ -11,7 +11,7 @@ class SingleLayoutTest {
         assertEquals(SingleWidgetPresentation.COMPACT, layout.presentation)
         assertFalse(layout.showDetail)
         assertFalse(layout.showCaption)
-        assertTrue(layout.ringDp <= 64f)
+        assertEquals(56f, layout.ringDp, 0.01f)
     }
 
     @Test fun shortWideWidgetPlacesTextBesideRing() {
@@ -34,6 +34,7 @@ class SingleLayoutTest {
         assertEquals(SingleWidgetPresentation.STACKED, layout.presentation)
         assertTrue(layout.showDetail)
         assertTrue(layout.ringDp <= 164f)
+        assertEquals(131.4f, layout.ringDp, 0.01f)
     }
 
     @Test fun largeWidgetShowsAllSupportingText() {
@@ -41,6 +42,23 @@ class SingleLayoutTest {
         assertEquals(SingleWidgetPresentation.LARGE, layout.presentation)
         assertTrue(layout.showDetail)
         assertTrue(layout.showCaption)
+        assertEquals(214.2f, layout.ringDp, 0.01f)
+    }
+
+    @Test fun ringsAndSupportingTextFitAcrossLauncherSizes() {
+        for (w in 70..420 step 10) for (h in 50..420 step 10) {
+            val layout = SingleLayout.forSize(w.toFloat(), h.toFloat())
+            val textDp = 14f + if (layout.showCaption) 14f else 0f
+            val contentHeight = when (layout.presentation) {
+                SingleWidgetPresentation.COMPACT,
+                SingleWidgetPresentation.WIDE,
+                -> layout.ringDp
+                SingleWidgetPresentation.STACKED -> layout.ringDp + 6f + textDp
+                SingleWidgetPresentation.LARGE -> layout.ringDp + 10f + textDp
+            }
+            assertTrue("w=$w h=$h $layout", layout.ringDp <= w - 24f)
+            assertTrue("w=$w h=$h $layout", contentHeight <= h - 24f)
+        }
     }
 
     @Test fun narrowTallWidgetRemainsCompact() {

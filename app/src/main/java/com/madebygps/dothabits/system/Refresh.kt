@@ -6,6 +6,8 @@ import android.util.Log
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.widget.DotWidget
 import com.madebygps.dothabits.widget.HabitWidget
+import com.madebygps.dothabits.widget.TransparentDotWidget
+import com.madebygps.dothabits.widget.TransparentHabitWidget
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,10 +39,12 @@ object Refresh {
             phase = "dot-widget"
             val dotWidgetStarted = SystemClock.elapsedRealtime()
             DotWidget().updateAll(app)
+            TransparentDotWidget().updateAll(app)
             val dotWidgetMs = SystemClock.elapsedRealtime() - dotWidgetStarted
             phase = "habit-widget"
             val habitWidgetStarted = SystemClock.elapsedRealtime()
             HabitWidget().updateAll(app)
+            TransparentHabitWidget().updateAll(app)
             val habitWidgetMs = SystemClock.elapsedRealtime() - habitWidgetStarted
             Log.i(
                 TAG,

@@ -17,9 +17,10 @@ import kotlin.math.roundToInt
 object RingBitmaps {
     private const val MASK = 0xFFFFFFFF.toInt()
 
-    enum class Tone { FOREGROUND, DIM, BACKGROUND }
+    enum class Tone { FOREGROUND, HIGHLIGHT, DIM, BACKGROUND }
 
     data class Layers(
+        val fill: Bitmap,
         val track: Bitmap,
         val progress: Bitmap,
         val icon: Bitmap,
@@ -29,6 +30,7 @@ object RingBitmaps {
 
     fun layers(t: HabitToday, sizePx: Int): Layers {
         val state = HabitTileState.from(t)
+        val fill = createBitmap(sizePx, sizePx)
         val track = createBitmap(sizePx, sizePx)
         val progress = createBitmap(sizePx, sizePx)
         val icon = createBitmap(sizePx, sizePx)
@@ -48,14 +50,15 @@ object RingBitmaps {
             progressCanvas.drawPath(contour, paint)
         } else {
             if (state.interiorFraction > 0f) {
-                progressCanvas.save()
-                progressCanvas.clipPath(contour)
+                val fillCanvas = Canvas(fill)
+                fillCanvas.save()
+                fillCanvas.clipPath(contour)
                 paint.alpha = (255 * TileGeometry.FILL_ALPHA).roundToInt()
-                progressCanvas.drawRect(
+                fillCanvas.drawRect(
                     rect.left, rect.bottom - rect.height() * state.interiorFraction,
                     rect.right, rect.bottom, paint,
                 )
-                progressCanvas.restore()
+                fillCanvas.restore()
             }
             paint.alpha = 255
             paint.style = Paint.Style.STROKE
@@ -76,10 +79,11 @@ object RingBitmaps {
         }
         drawIcon(Canvas(icon), sizePx, t.habit.icon)
         return Layers(
+            fill = fill,
             track = track,
             progress = progress,
             icon = icon,
-            progressTone = if (state.dimmed) Tone.DIM else Tone.FOREGROUND,
+            progressTone = if (state.dimmed) Tone.DIM else Tone.HIGHLIGHT,
             iconTone = when {
                 state.solid -> Tone.BACKGROUND
                 state.dimmed -> Tone.DIM

@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Large preset for the first six habits. The responsive DotWidget renderer continues adapting
-  if the user resizes it after placement.
--->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="250dp"
+    android:minWidth="110dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"
     android:minResizeHeight="50dp"
-    android:targetCellWidth="4"
+    android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:maxResizeWidth="420dp"
     android:maxResizeHeight="420dp"
@@ -16,5 +12,5 @@
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/glance_default_loading_layout"
-    android:previewImage="@drawable/widget_preview"
-    android:description="@string/widget_description" />
+    android:previewImage="@drawable/widget_transparent_preview"
+    android:description="@string/transparent_widget_description" />

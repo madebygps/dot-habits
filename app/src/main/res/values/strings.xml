@@ -25,10 +25,12 @@
     <string name="toy_summary">Timed habit timers.</string>
     <string name="habit_toy_name">Dot Habits · Habit</string>
     <string name="habit_toy_summary">Shows the selected habit\'s icon and progress.</string>
-    <string name="habit_widget_label">Dot Habits · Compact</string>
-    <string name="wide_widget_label">Dot Habits · Wide</string>
-    <string name="widget_label">Dot Habits · Square</string>
-    <string name="large_widget_label">Dot Habits · Large</string>
+    <string name="habit_widget_label">Dot Habits · Single Habit · Framed</string>
+    <string name="widget_label">Dot Habits · Grid · Framed</string>
+    <string name="transparent_habit_widget_label">Dot Habits · Single Habit · Transparent</string>
+    <string name="transparent_widget_label">Dot Habits · Grid · Transparent</string>
+    <string name="transparent_habit_widget_description">One habit\'s icon and progress directly on your wallpaper. Pick the habit, any size. Display only, tap to open.</string>
+    <string name="transparent_widget_description">Today\'s rounded-square habit tiles directly on your wallpaper. Display only, tap to open.</string>
     <string name="habit_widget_description">One habit\'s icon and progress. Pick the habit, any size. Display only, tap to open.</string>
     <string name="widget_description">Today\'s rounded-square habit tiles. Display only, tap to open.</string>
 </resources>

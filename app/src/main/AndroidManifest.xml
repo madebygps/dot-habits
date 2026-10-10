@@ -94,19 +94,6 @@
                 android:resource="@xml/dot_widget_info" />
         </receiver>
 
-        <!-- Display-only large home screen widget. -->
-        <receiver
-            android:name=".widget.DotLargeWidgetReceiver"
-            android:exported="true"
-            android:label="@string/large_widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/dot_large_widget_info" />
-        </receiver>
-
         <!-- Display-only compact single-habit widget. Keep this component for placed widgets. -->
         <receiver
             android:name=".widget.HabitWidgetReceiver"
@@ -120,19 +107,28 @@
                 android:resource="@xml/habit_widget_info" />
         </receiver>
 
-        <!-- Display-only wide single-habit widget. -->
         <receiver
-            android:name=".widget.HabitWideWidgetReceiver"
+            android:name=".widget.DotTransparentWidgetReceiver"
             android:exported="true"
-            android:label="@string/wide_widget_label">
+            android:label="@string/transparent_widget_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/habit_wide_widget_info" />
+                android:resource="@xml/dot_transparent_widget_info" />
         </receiver>
-
+        <receiver
+            android:name=".widget.HabitTransparentWidgetReceiver"
+            android:exported="true"
+            android:label="@string/transparent_habit_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/habit_transparent_widget_info" />
+        </receiver>
         <activity
             android:name=".widget.HabitWidgetConfigActivity"
             android:exported="true"

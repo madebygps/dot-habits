@@ -51,7 +51,8 @@ The installer requires Python 3.9+ and `adb` on PATH, and fails closed if fetchi
 Pulled APKs are verified in a short-lived directory under the checkout's ignored `build/` directory.
 
 Settings > About and the home About sheet show the commit, a modified marker for uncommitted changes,
-and UTC build time. The APK embeds the same provenance for installation checks. Legacy APKs without
+and build time in the phone's locale, time zone, and 12/24-hour format. The APK retains the UTC
+timestamp and the same provenance for installation checks. Legacy APKs without
 metadata are accepted once to bootstrap this guard; it cannot establish their original source.
 The guard prevents stale ancestry and competing checkout installs, not bugs in newer changes or installs
 performed outside this workflow.

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Dot Habits</string>
-    <string name="build_identity">Version %1$s · %2$s%3$s\nBuilt %4$s (UTC)</string>
+    <string name="build_identity">Version %1$s · %2$s%3$s\nBuilt %4$s</string>
     <string name="build_modified"> (modified)</string>
     <string name="channel_reminders">Habit reminders</string>
     <string name="channel_timer">Running timer</string>

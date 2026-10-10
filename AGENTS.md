@@ -23,7 +23,8 @@ python3 scripts/install_debug.py          # guarded install, only from the desig
 - Transfer ownership with `--claim` only when the user explicitly approves moving installation to
   another checkout. Integrate the previous checkout's changes first; its owner must commit and install
   a clean build before transferring a modified installed build. Use `--serial SERIAL` with multiple devices.
-- Settings > About and the home About sheet show the Git commit, modified marker and UTC build time.
+- Settings > About and the home About sheet show the Git commit, modified marker and localized build time
+  (phone locale, time zone and 12/24-hour preference). APK provenance retains the UTC timestamp.
   No provenance on an older APK is a one-time bootstrap, not proof that its source is current.
 - `compileSdk 37` (required by current AndroidX), `minSdk = targetSdk = 36`.
 - AGP 9 built-in Kotlin: do not add the `kotlin-android` plugin.

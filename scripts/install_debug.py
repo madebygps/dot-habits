@@ -119,7 +119,9 @@ def main():
         run("git", "fetch", "--quiet", "origin", "main")
         head = git("rev-parse", "HEAD")
         remote_main = git("rev-parse", "refs/remotes/origin/main")
-        with tempfile.TemporaryDirectory(prefix="dot-habits-install-") as temporary:
+        verification_root = ROOT / "build" / "install-verification"
+        verification_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix="dot-habits-install-", dir=verification_root) as temporary:
             installed = installed_info(adb, Path(temporary))
             validate_freshness(head, remote_main, installed)
             validate_modified_install(installed, owner, str(ROOT))

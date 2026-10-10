@@ -25,6 +25,37 @@ class TimerMathTest {
         assertEquals((20 + 25 + 15) * 60L, TimerMath.secondsOnDay(sessions + running, day, zone, now))
     }
 
+    @Test fun shortPauseResumeRunsRoundOnlyAfterDailyAccumulation() {
+        val start = at(8, 0)
+        val sessions = listOf(
+            closed(start, start.plusMillis(600), 1),
+            closed(start.plusSeconds(1), start.plusMillis(1600), 2),
+            closed(start.plusSeconds(2), start.plusMillis(2600), 3),
+        )
+        assertEquals(1L, TimerMath.secondsOnDay(sessions, day, zone, at(9, 0)))
+        assertEquals(mapOf(day to 1L), TimerMath.secondsByDay(sessions, zone, at(9, 0)))
+    }
+
+    @Test fun subsecondCreditRoundsIndependentlyOnEachSideOfMidnight() {
+        val midnight = at(0, 0, day.plusDays(1))
+        val sessions = listOf(
+            closed(midnight.minusMillis(600), midnight.plusMillis(600), 1),
+            closed(midnight.minusMillis(2000), midnight.minusMillis(1400), 2),
+            closed(midnight.plusMillis(1000), midnight.plusMillis(1600), 3),
+        )
+        assertEquals(mapOf(day to 1L, day.plusDays(1) to 1L),
+            TimerMath.secondsByDay(sessions, zone, midnight.plusSeconds(10)))
+        for (date in listOf(day, day.plusDays(1))) {
+            assertEquals(1L, TimerMath.secondsOnDay(sessions, date, zone, midnight.plusSeconds(10)))
+        }
+    }
+
+    @Test fun glyphHourRoundingCarriesIntoTheNextHour() {
+        assertEquals("2H00", TimerMath.formatGlyphCountdown(119 * 60 + 1))
+        assertEquals("2H00", TimerMath.formatGlyphCountdown(120 * 60))
+        assertEquals("2H01", TimerMath.formatGlyphCountdown(120 * 60 + 1))
+    }
+
     @Test fun sessionAcrossMidnightIsSplitBetweenDays() {
         val s = closed(at(23, 30), at(0, 45, day.plusDays(1)))
         val byDay = TimerMath.secondsByDay(listOf(s), zone, at(9, 0, day.plusDays(1)))

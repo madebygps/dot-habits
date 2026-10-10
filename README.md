@@ -48,6 +48,7 @@ integrate the previous checkout's changes and run `python3 scripts/install_debug
 For a modified installed build, its owner must commit the changes and install a clean build before
 ownership can transfer. With multiple devices, pass `--serial SERIAL`.
 The installer requires Python 3.9+ and `adb` on PATH, and fails closed if fetching or verification fails.
+Pulled APKs are verified in a short-lived directory under the checkout's ignored `build/` directory.
 
 Settings > About and the home About sheet show the commit, a modified marker for uncommitted changes,
 and UTC build time. The APK embeds the same provenance for installation checks. Legacy APKs without

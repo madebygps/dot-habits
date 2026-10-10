@@ -6,10 +6,14 @@ import tempfile
 import unittest
 import zipfile
 
-from install_debug import read_build_info, validate_freshness, validate_modified_install, validate_owner
+from install_debug import ROOT, read_build_info, validate_freshness, validate_modified_install, validate_owner
 
 
 class InstallGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.verification_root = ROOT / "build" / "install-verification-tests"
+        self.verification_root.mkdir(parents=True, exist_ok=True)
+
     def test_only_owner_installs_without_explicit_transfer(self):
         validate_owner(None, "/current", False)
         validate_owner({"workspace": "/current"}, "/current", False)
@@ -49,7 +53,7 @@ class InstallGuardTests(unittest.TestCase):
         self.assertIn("uncommitted changes", output.getvalue())
 
     def test_apk_metadata_and_legacy_detection(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=self.verification_root) as directory:
             apk = Path(directory) / "app.apk"
             with zipfile.ZipFile(apk, "w"):
                 pass
@@ -60,7 +64,7 @@ class InstallGuardTests(unittest.TestCase):
             self.assertEqual(info, read_build_info(apk))
 
     def test_invalid_metadata_is_not_a_legacy_fallback(self):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(dir=self.verification_root) as directory:
             apk = Path(directory) / "app.apk"
             with zipfile.ZipFile(apk, "w") as archive:
                 archive.writestr("assets/build-info.json", '{"commit": 123, "dirty": false}')

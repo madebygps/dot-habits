@@ -255,6 +255,7 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
             Divider()
             Header("ABOUT")
             TextButton(onClick = onGuide) { Text("How Dot Habits works") }
+            BuildDetails()
             Text(
                 "Offline. No account, no tracking. Your data stays on this phone.",
                 style = MaterialTheme.typography.bodySmall,

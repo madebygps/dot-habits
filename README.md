@@ -31,8 +31,23 @@ There is no consumer download or Play Store release yet. To install a developmen
 
 ```sh
 echo "sdk.dir=$ANDROID_HOME" > local.properties
-./gradlew :app:installDebug
+python3 scripts/install_debug.py
 ```
+
+The guarded installer designates one checkout per phone and serializes installs across sessions.
+It fetches `origin/main` and refuses a checkout missing either current main or the installed commit.
+Other sessions should build/test only, then hand their changes to the install checkout. Direct Gradle
+install tasks are disabled; do not bypass the guard with `adb install`. To explicitly transfer ownership,
+integrate the previous checkout's changes and run `python3 scripts/install_debug.py --claim`.
+For a modified installed build, its owner must commit the changes and install a clean build before
+ownership can transfer. With multiple devices, pass `--serial SERIAL`.
+The installer requires Python 3.9+ and `adb` on PATH, and fails closed if fetching or verification fails.
+
+Settings > About and the home About sheet show the commit, a modified marker for uncommitted changes,
+and UTC build time. The APK embeds the same provenance for installation checks. Legacy APKs without
+metadata are accepted once to bootstrap this guard; it cannot establish their original source.
+The guard prevents stale ancestry and competing checkout installs, not bugs in newer changes or installs
+performed outside this workflow.
 
 To run the unit tests as well, use `./gradlew :app:testDebugUnitTest`. After installing, enable toys in
 **Settings › Glyph › Glyph Toys › Set up** and pick the Habit toy's habit under **Displayed habit**.

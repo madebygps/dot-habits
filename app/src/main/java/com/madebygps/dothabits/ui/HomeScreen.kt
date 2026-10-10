@@ -294,7 +294,7 @@ private fun HabitCell(
                         .background(if (tile.solid) Color.Black else if (tile.dimmed) Palette.Dim else Palette.Muted),
                 )
             }
-            if (t.habit.type == HabitType.TIMED) {
+            if (t.canControlTimer) {
                 PlayPauseButton(
                     running = t.timerRunning,
                     size = ring * 0.30f,

@@ -184,7 +184,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
                     else -> Palette.Text
                 })
             }
-            if (t.habit.type == HabitType.TIMED) {
+            if (t.canControlTimer) {
                 PlayPauseButton(t.timerRunning, 48.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id) }
             }
         }

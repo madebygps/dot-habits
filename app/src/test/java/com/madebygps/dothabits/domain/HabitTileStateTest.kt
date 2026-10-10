@@ -69,6 +69,29 @@ class HabitTileStateTest {
         assertTrue(HabitTileState.from(today(timed, 60 * 60)).solid)
     }
 
+    @Test fun manuallyCompletedDayIsSolidWithoutPausedTimerControls() {
+        for (goal in listOf(1, 3)) {
+            val habit = timed.copy(sessions = goal)
+            val paused = TimerSession(1, habit.id, now, null, SessionState.PAUSED, 1, 1200,
+                remainingMs = 720_000, epochDay = day.toEpochDay())
+            val t = today(habit, habit.dailyGoalUnits, listOf(paused))
+
+            assertEquals(TodayStatus.DONE, t.status)
+            assertEquals(HabitTileState(solid = true), HabitTileState.from(t))
+            assertFalse(t.timerPaused)
+            assertFalse(t.timerRunning)
+            assertFalse(t.canControlTimer)
+            assertNull(t.tileSessionProgress)
+            assertEquals("", HabitLabels.caption(t))
+
+            val corrected = today(habit)
+            assertFalse(HabitTileState.from(corrected).solid)
+            assertTrue(corrected.canControlTimer)
+            assertNull(corrected.tileSessionProgress)
+            assertEquals(0f, HabitTileState.from(corrected).interiorFraction, 0f)
+        }
+    }
+
     @Test fun singleSessionTimerStillFillsInterior() {
         val paused = TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1200,
             remainingMs = 600_000, epochDay = day.toEpochDay())
@@ -134,15 +157,16 @@ class HabitTileStateTest {
         assertTrue(HabitTileState.from(t).solid)
     }
 
-    @Test fun activeStoredRunDoesNotWrapAfterHistoryOrDurationEdits() {
+    @Test fun completedHistoryHidesRunAfterDurationEdits() {
         val start = now.minusSeconds(8 * 60)
         val run = TimerSession(1, timed.id, start, null, SessionState.RUNNING, 1, 20 * 60, epochDay = day.toEpochDay())
         for (target in listOf(10, 20)) {
             val t = today(timed.copy(dailyTarget = target), value = 60 * 60, sessions = listOf(run))
             val state = HabitTileState.from(t)
-            assertFalse(state.solid)
-            assertEquals(.4f, state.interiorFraction, .0001f)
-            assertEquals("12:00 LEFT", HabitLabels.caption(t))
+            assertTrue(state.solid)
+            assertFalse(t.timerRunning)
+            assertNull(t.tileSessionProgress)
+            assertEquals("", HabitLabels.caption(t))
         }
     }
 

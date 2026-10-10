@@ -30,5 +30,5 @@
     <string name="widget_label">Dot Habits · Square</string>
     <string name="large_widget_label">Dot Habits · Large</string>
     <string name="habit_widget_description">One habit\'s icon and progress. Pick the habit, any size. Display only, tap to open.</string>
-    <string name="widget_description">Today\'s habit rings. Display only, tap to open.</string>
+    <string name="widget_description">Today\'s rounded-square habit tiles. Display only, tap to open.</string>
 </resources>

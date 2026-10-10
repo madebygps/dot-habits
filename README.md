@@ -5,7 +5,8 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 
 ## Features
 
-- **Home:** six rings per page (2×3), up to 24 habits. Hold a ring to log, tap it for details. Completed rings fill in.
+- **Home:** six rounded-square habit tiles per page (2×3), up to 24 habits. Hold to log a count or start/pause a timer; tap for details. Steps update automatically.
+- **Progress:** count borders light one segment per logged count; timer borders count finished sessions while the interior fills bottom-up within the current session and retains its level when paused. Finishing a session lights its border segment and resets the interior for the next one. Steps fill toward the daily goal. Reached goals become solid with inverted icons; avoid habits keep a dashed outline and show slips/allowance rather than a success fill.
 - **About:** tap the centered app icon for the installed version, creator credit, and GitHub repo.
 - **Habit types:** check/count (e.g. meds 2×/day), timer (sessions × minutes, e.g. Deep Work 4 × 25), steps, and avoid.
 - **Schedules:** every day, selected weekdays, N distinct days/week, or N times/week. The week starts Monday by default.
@@ -13,7 +14,7 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 - **History:** edit or backfill any day; streaks and stats recalculate.
 - **Statistics:** 30/60/90-day or all-time completion rate, weekly bars and a by-weekday chart.
 - **Reminders** on scheduled days that aren't done yet.
-- **Widgets** (display only): a six-ring grid, and a resizable single-habit widget.
+- **Widgets** (display only): a six-tile grid, and a resizable single-habit widget with the same type-specific progress as the app.
 - **Glyph Toys:** Habit shows a selected habit's icon and progress (display only); Timers has countdowns,
   long press to start or pause, and hold for 2 s to switch timer. Enable either or both.
 - **Glyph Progress:** running sessions also publish an Android 16 Live Update so Nothing OS can display

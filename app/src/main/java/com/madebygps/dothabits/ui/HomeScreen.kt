@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,8 +71,8 @@ import com.madebygps.dothabits.data.HABITS_PER_PAGE
 import com.madebygps.dothabits.data.MAX_HABITS
 import com.madebygps.dothabits.domain.HabitLabels
 import com.madebygps.dothabits.domain.HabitToday
+import com.madebygps.dothabits.domain.HabitTileState
 import com.madebygps.dothabits.domain.HabitType
-import com.madebygps.dothabits.domain.TodayStatus
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.time.format.TextStyle as JTextStyle
@@ -180,12 +181,12 @@ private fun EmptyState(onAdd: () -> Unit, onExamples: () -> Unit, modifier: Modi
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Ring(0f, 0, Modifier.size(140.dp)) { DotIcon("dot", Modifier.size(56.dp), LocalHighlight.current) }
+        HabitTile(HabitTileState(), Modifier.size(140.dp)) { DotIcon("dot", Modifier.size(56.dp), LocalHighlight.current) }
         Spacer(Modifier.height(24.dp))
         Text("No habits yet", style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Press and hold a circle to complete it. Add your own habit or start from the examples.",
+            "Press and hold a habit tile to log a count or start/pause a timer. Steps update automatically.",
             style = MaterialTheme.typography.bodyMedium,
             color = Palette.Muted,
             textAlign = TextAlign.Center,
@@ -242,32 +243,24 @@ private fun HabitCell(
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     val highlight = LocalHighlight.current
-    val ringColor = when (t.status) {
-        TodayStatus.SLIPPED -> Palette.Dim
-        else -> highlight
-    }
-    val filled = t.status == TodayStatus.DONE
+    val tile = HabitTileState.from(t)
     val iconColor = when {
-        filled -> Color.Black
-        t.status == TodayStatus.REST -> Palette.Dim
+        tile.solid -> Palette.Black
+        tile.dimmed -> Palette.Dim
         else -> Palette.Text
     }
     val caption = HabitLabels.caption(t)
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(ring)) {
-            Ring(
-                fraction = t.fraction,
-                segments = t.segments,
-                color = ringColor,
-                dashedTrack = t.habit.isNegative,
+            HabitTile(
+                state = tile,
                 holdProgress = hold.value,
-                filled = filled,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(percent = 18))
                     .semantics {
-                        contentDescription = "${t.habit.name}. ${caption.ifEmpty { t.status.name.lowercase() }}"
+                        contentDescription = HabitLabels.accessibility(t)
                         customActions = listOf(
                             CustomAccessibilityAction("Complete") { onHold(t.habit.id); true },
                             CustomAccessibilityAction("Open details") { onOpen(t.habit.id); true },
@@ -362,8 +355,8 @@ private fun AddCell(ring: Dp, onAdd: () -> Unit) {
         Box(
             Modifier
                 .size(ring)
-                .clip(CircleShape)
-                .border(2.dp, Palette.Track, CircleShape)
+                .clip(RoundedCornerShape(percent = 18))
+                .border(2.dp, Palette.Track, RoundedCornerShape(percent = 18))
                 .clickable(onClickLabel = "Add habit", onClick = onAdd),
             contentAlignment = Alignment.Center,
         ) {

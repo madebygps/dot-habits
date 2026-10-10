@@ -15,11 +15,8 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
@@ -195,51 +192,9 @@ fun DotIcon(name: String, modifier: Modifier = Modifier, color: Color? = null) {
         for (i in bits.indices) if (bits[i]) {
             drawCircle(
                 resolvedColor,
-                radius = cell * RingGeometry.DOT_RADIUS_FRACTION,
+                radius = cell * TileGeometry.DOT_RADIUS_FRACTION,
                 center = Offset(ox + (i % DotIcons.SIZE + 0.5f) * cell, oy + (i / DotIcons.SIZE + 0.5f) * cell),
             )
         }
-    }
-}
-
-/** Progress ring (continuous or segmented) shared geometry with widgets. */
-@Composable
-fun Ring(
-    fraction: Float,
-    segments: Int,
-    modifier: Modifier = Modifier,
-    color: Color = LocalHighlight.current,
-    dashedTrack: Boolean = false,
-    holdProgress: Float = 0f,
-    /** Goal met: draw a solid disc instead of an outline. */
-    filled: Boolean = false,
-    content: @Composable () -> Unit = {},
-) {
-    val colors = LocalDotColors.current
-    Box(modifier, contentAlignment = androidx.compose.ui.Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) {
-            val stroke = size.minDimension * RingGeometry.STROKE_FRACTION
-            val inset = stroke / 2f + 1f
-            val arcSize = Size(size.minDimension - inset * 2, size.minDimension - inset * 2)
-            val topLeft = Offset((size.width - arcSize.width) / 2, (size.height - arcSize.height) / 2)
-            val arcs = RingGeometry.arcs(fraction, segments)
-            val trackStroke = Stroke(
-                width = stroke,
-                pathEffect = if (dashedTrack) PathEffect.dashPathEffect(floatArrayOf(stroke * 0.6f, stroke * 0.6f)) else null,
-            )
-            if (filled) {
-                drawCircle(color, radius = arcSize.width / 2 + stroke / 2, center = center)
-            } else {
-                arcs.track.forEach { (s, sw) -> drawArc(colors.track, s, sw, false, topLeft, arcSize, style = trackStroke) }
-                arcs.filled.forEach { (s, sw) -> drawArc(color, s, sw, false, topLeft, arcSize, style = Stroke(stroke)) }
-            }
-            if (holdProgress > 0f) {
-                // Inner hold-to-complete indicator.
-                val r = arcSize.width / 2 - stroke * 1.6f
-                val holdColor = if (filled) Color.Black else color
-                drawCircle(holdColor.copy(alpha = 0.18f * holdProgress), radius = r * holdProgress, center = center)
-            }
-        }
-        content()
     }
 }

@@ -11,6 +11,7 @@ import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Box
 import androidx.glance.layout.size
 import androidx.glance.unit.ColorProvider as GlanceColorProvider
+import com.madebygps.dothabits.domain.HabitLabels
 import com.madebygps.dothabits.domain.HabitToday
 
 internal object WidgetColors {
@@ -30,6 +31,7 @@ internal object WidgetColors {
 
 @Composable
 internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int) {
+    // All four widget variants use the shared tile masks; launch actions stay on the whole widget.
     val layers = RingBitmaps.layers(t, sizePx)
     Box(GlanceModifier.size(size)) {
         Image(
@@ -46,7 +48,7 @@ internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int) {
         )
         Image(
             ImageProvider(layers.icon),
-            t.habit.name,
+            HabitLabels.accessibility(t),
             modifier = GlanceModifier.size(size),
             colorFilter = ColorFilter.tint(WidgetColors.tone(layers.iconTone)),
         )

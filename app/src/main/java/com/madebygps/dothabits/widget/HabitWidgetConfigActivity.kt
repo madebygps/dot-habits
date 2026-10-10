@@ -33,13 +33,13 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import com.madebygps.dothabits.data.AppSettings
+import com.madebygps.dothabits.domain.HabitTileState
 import com.madebygps.dothabits.domain.TodaySnapshot
-import com.madebygps.dothabits.domain.TodayStatus
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.ui.DotIcon
 import com.madebygps.dothabits.ui.DotTheme
+import com.madebygps.dothabits.ui.HabitTile
 import com.madebygps.dothabits.ui.Palette
-import com.madebygps.dothabits.ui.Ring
 import kotlinx.coroutines.launch
 
 /** Picks the habit a [HabitWidget] shows, when it's placed and when it's reconfigured. */
@@ -87,9 +87,16 @@ class HabitWidgetConfigActivity : ComponentActivity() {
                                     .padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                val done = t.status == TodayStatus.DONE
-                                Ring(t.fraction, t.segments, Modifier.size(48.dp), dashedTrack = t.habit.isNegative, filled = done) {
-                                    DotIcon(t.habit.icon, Modifier.size(22.dp), if (done) Palette.Black else Palette.Text)
+                                val tile = HabitTileState.from(t)
+                                HabitTile(tile, Modifier.size(48.dp)) {
+                                    DotIcon(
+                                        t.habit.icon, Modifier.size(22.dp),
+                                        when {
+                                            tile.solid -> Palette.Black
+                                            tile.dimmed -> Palette.Dim
+                                            else -> Palette.Text
+                                        },
+                                    )
                                 }
                                 Spacer(Modifier.width(16.dp))
                                 Text(t.habit.name.uppercase(), style = MaterialTheme.typography.bodyLarge)

@@ -1,6 +1,7 @@
 package com.madebygps.dothabits.domain
 
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 
@@ -31,6 +32,8 @@ data class HabitToday(
     val needsReview: Boolean,
     /** For STEPS habits: false when no Health Connect reading exists for today. */
     val hasData: Boolean = true,
+    /** App/widget current-session fill, anchored to a stored run rather than rounded day totals. */
+    val tileSessionProgress: TileSessionProgress? = null,
 ) {
     /** TIMED only: seconds left in the current session (a full session once the last one ended). */
     val sessionRemaining: Long get() = TimerMath.sessionRemaining(value, habit.sessionSeconds)
@@ -98,6 +101,15 @@ object SnapshotBuilder {
         val streak = HabitRules.streaks(habit, today, firstDay, h.values)
         val running = h.sessions.any { TimerMath.isLive(it, now) }
         val review = h.sessions.any { it.state == SessionState.NEEDS_REVIEW }
+        val displayedRun = h.sessions
+            .filter { it.limitSeconds != null && (TimerMath.isLive(it, now) || it.state == SessionState.NEEDS_REVIEW) }
+            .maxByOrNull { it.start }
+        val tileSessionProgress = displayedRun?.let { run ->
+            val total = maxOf(habit.sessionSeconds, run.limitSeconds ?: 0, 1)
+            val observed = if (run.state == SessionState.NEEDS_REVIEW) run.lastAlive else now
+            val remaining = Duration.between(observed, TimerMath.limitEnd(run)).seconds.coerceIn(0, total)
+            TileSessionProgress(total, remaining)
+        }
 
         val (value, fraction, status) = when {
             habit.isNegative -> {
@@ -128,6 +140,7 @@ object SnapshotBuilder {
             timerRunning = running,
             needsReview = review,
             hasData = habit.type != HabitType.STEPS || h.stepsAvailableToday,
+            tileSessionProgress = tileSessionProgress,
         )
     }
 

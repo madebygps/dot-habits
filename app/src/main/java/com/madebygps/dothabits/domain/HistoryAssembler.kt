@@ -32,6 +32,7 @@ object HistoryAssembler {
                     }
                 }
             }
+            // Timer offsets may be negative: clamp only after combining with recorded credit.
             values.replaceAll { _, v -> v.coerceAtLeast(0L) }
             HabitHistory(
                 habit = habit,

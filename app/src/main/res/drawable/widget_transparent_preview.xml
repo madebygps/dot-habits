@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Illustrative states only: done, count, timer, steps, avoid and missing/rest. No stored history. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp" android:height="200dp" android:viewportWidth="200" android:viewportHeight="200">
+    <!-- Tile contours use the shared 0.21 corner fraction and 3px stroke on a 48px square. -->
+    <group android:translateX="44" android:translateY="14">
+        <path android:fillColor="@color/widget_foreground" android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:fillColor="@color/widget_background" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+    <!-- Two of four completed count units; no interior fill. -->
+    <group android:translateX="108" android:translateY="14">
+        <path android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:trimPathStart="0.015" android:trimPathEnd="0.235" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:trimPathStart="0.265" android:trimPathEnd="0.485" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:trimPathStart="0.515" android:trimPathEnd="0.735" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:trimPathStart="0.765" android:trimPathEnd="0.985" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:fillColor="@color/widget_foreground" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+    <!-- Timer: one completed session plus independent half-full current session. -->
+    <group android:translateX="44" android:translateY="76">
+        <group>
+            <clip-path android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+            <path android:fillColor="@color/widget_foreground" android:fillAlpha="0.48" android:pathData="M2.5,24H45.5V45.5H2.5Z"/>
+        </group>
+        <path android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:trimPathStart="0.015" android:trimPathEnd="0.485" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:trimPathStart="0.515" android:trimPathEnd="0.985" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:fillColor="@color/widget_foreground" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+    <!-- Steps: interior progress only. -->
+    <group android:translateX="108" android:translateY="76">
+        <group>
+            <clip-path android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+            <path android:fillColor="@color/widget_foreground" android:fillAlpha="0.48" android:pathData="M2.5,19.7H45.5V45.5H2.5Z"/>
+        </group>
+        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:fillColor="@color/widget_foreground" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+    <!-- Avoid: dashed accent border, never a success fill. -->
+    <group android:translateX="44" android:translateY="138">
+        <path android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:pathData="M14,2.5h4M22,2.5h4M30,2.5h4M36.47,2.5A9.03,9.03 0 0,1 45.5,11.53M45.5,14v4M45.5,22v4M45.5,30v4M45.5,36.47A9.03,9.03 0 0,1 36.47,45.5M34,45.5h-4M26,45.5h-4M18,45.5h-4M11.53,45.5A9.03,9.03 0 0,1 2.5,36.47M2.5,34v-4M2.5,26v-4M2.5,18v-4M2.5,11.53A9.03,9.03 0 0,1 11.53,2.5"/>
+        <path android:fillColor="@color/widget_foreground" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+    <group android:translateX="108" android:translateY="138">
+        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
+        <path android:fillColor="@color/widget_foreground" android:fillAlpha="0.55" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
+    </group>
+</vector>

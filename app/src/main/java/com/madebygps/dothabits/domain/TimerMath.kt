@@ -55,16 +55,35 @@ object TimerMath {
     fun sessionsDone(todaySeconds: Long, sessionSeconds: Long, sessions: Int): Int =
         if (sessionSeconds <= 0) 0 else (todaySeconds / sessionSeconds).toInt().coerceAtMost(sessions)
 
+    /**
+     * Absolute completed-session correction, stored as a signed seconds offset from internal
+     * recorded credit. Retains the credited fractional session; never changes a run or its limit.
+     * Replacing (not adding) this offset makes repeated corrections idempotent.
+     */
+    fun completionAdjustment(
+        recordedSeconds: Long,
+        manualSeconds: Long,
+        sessionSeconds: Long,
+        completedSessions: Long,
+    ): Long {
+        require(recordedSeconds >= 0 && sessionSeconds > 0 && completedSessions >= 0)
+        val credited = Math.addExact(recordedSeconds, manualSeconds).coerceAtLeast(0)
+        val desired = Math.addExact(Math.multiplyExact(completedSessions, sessionSeconds), credited % sessionSeconds)
+        return Math.subtractExact(desired, recordedSeconds)
+    }
+
     fun dayBounds(date: LocalDate, zone: ZoneId): Pair<Instant, Instant> =
         date.atStartOfDay(zone).toInstant() to date.plusDays(1).atStartOfDay(zone).toInstant()
 
     fun secondsOnDay(sessions: List<TimerSession>, date: LocalDate, zone: ZoneId, now: Instant): Long {
         val (dayStart, dayEnd) = dayBounds(date, zone)
-        return sessions.sumOf { s ->
-            val from = maxOf(s.start, dayStart)
-            val to = minOf(effectiveEnd(s, now), dayEnd)
-            if (to > from) Duration.between(from, to).seconds else 0L
-        }
+        return sessions.sumOf { millisecondsWithin(it, dayStart, dayEnd, now) } / 1000
+    }
+
+    private fun millisecondsWithin(session: TimerSession, dayStart: Instant, dayEnd: Instant, now: Instant): Long {
+        val from = maxOf(session.start, dayStart)
+        val to = minOf(effectiveEnd(session, now), dayEnd)
+        return if (to > from) Duration.between(from, to).toMillis() else 0L
     }
 
     /** Seconds per day for every day touched by [sessions]. */
@@ -76,12 +95,14 @@ object TimerMath {
             var day = s.start.atZone(zone).toLocalDate()
             val lastDay = end.atZone(zone).toLocalDate()
             while (!day.isAfter(lastDay)) {
-                val secs = secondsOnDay(listOf(s), day, zone, now)
-                if (secs > 0) out[day] = (out[day] ?: 0L) + secs
+                val (dayStart, dayEnd) = dayBounds(day, zone)
+                val millis = millisecondsWithin(s, dayStart, dayEnd, now)
+                if (millis > 0) out[day] = (out[day] ?: 0L) + millis
                 day = day.plusDays(1)
             }
         }
-        return out
+        // Round once per day, not once per pause, so short runs still accumulate.
+        return out.mapValues { (_, millis) -> millis / 1000 }
     }
 
 
@@ -101,11 +122,13 @@ object TimerMath {
         return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
     }
 
-    /** Glyph countdown: whole minutes rounded up ("25"), then seconds in the final minute ("42"). */
     /** Glyph countdown: m:ss up to 99:59 (fits the 25-LED width), then 1H40-style hours+minutes. */
     fun formatGlyphCountdown(seconds: Long): String {
         val s = seconds.coerceAtLeast(0)
         return if (s < 100 * 60) "%d:%02d".format(s / 60, s % 60)
-        else "%dH%02d".format(s / 3600, (s % 3600 + 59) / 60 % 60)
+        else {
+            val minutes = (s + 59) / 60
+            "%dH%02d".format(minutes / 60, minutes % 60)
+        }
     }
 }

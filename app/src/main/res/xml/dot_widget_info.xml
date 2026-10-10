@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Display-only widget showing up to the first six rounded-square habit tiles. Default 2x2 uses the app's
-  2-column x 3-row grid; one-row and wide sizes use shape-specific grids, and labels/captions
+  2-column x 3-row grid; one-row and wide sizes use shape-specific grids, and captions
   appear when there is room (see WidgetGrid in DotWidget.kt).
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"

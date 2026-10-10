@@ -34,9 +34,12 @@ data class HabitToday(
     val hasData: Boolean = true,
     /** App/widget current-session fill, anchored to a stored run rather than rounded day totals. */
     val tileSessionProgress: TileSessionProgress? = null,
+    /** Fixed deadline of the live run, independent of day rollover or edits to its habit. */
+    val timerEndsAt: Instant? = null,
+    val runningSecondsRemaining: Long? = null,
 ) {
     /** TIMED only: seconds left in the current session (a full session once the last one ended). */
-    val sessionRemaining: Long get() = TimerMath.sessionRemaining(value, habit.sessionSeconds)
+    val sessionRemaining: Long get() = runningSecondsRemaining ?: TimerMath.sessionRemaining(value, habit.sessionSeconds)
 
     val countsTowardToday: Boolean get() = status != TodayStatus.REST
     val isComplete: Boolean get() = status == TodayStatus.DONE || status == TodayStatus.ON_TRACK
@@ -59,6 +62,7 @@ data class ActiveTimer(
     val icon: String = "",
     /** Timed habits due today and not done, in home order; the toy's hold gesture cycles them. */
     val choices: List<Long> = listOf(habitId),
+    val endsAt: Instant? = null,
 ) {
     /** The habit a hold should switch to, or null when there's nothing else to pick or one is running. */
     val next: Long? get() = if (running || choices.size < 2) null
@@ -99,7 +103,8 @@ object SnapshotBuilder {
         val todayValue = h.values[today] ?: 0L
         val week = HabitRules.weekProgress(habit, today, today, firstDay, h.values)
         val streak = HabitRules.streaks(habit, today, firstDay, h.values)
-        val running = h.sessions.any { TimerMath.isLive(it, now) }
+        val run = h.sessions.firstOrNull { habit.type == HabitType.TIMED && TimerMath.isLive(it, now) }
+        val endsAt = run?.takeIf { it.limitSeconds != null }?.let { TimerMath.limitEnd(it) }
         val review = h.sessions.any { it.state == SessionState.NEEDS_REVIEW }
         val displayedRun = h.sessions
             .filter { it.limitSeconds != null && (TimerMath.isLive(it, now) || it.state == SessionState.NEEDS_REVIEW) }
@@ -137,10 +142,12 @@ object SnapshotBuilder {
             status = status,
             streak = streak,
             week = week,
-            timerRunning = running,
+            timerRunning = run != null,
             needsReview = review,
             hasData = habit.type != HabitType.STEPS || h.stepsAvailableToday,
             tileSessionProgress = tileSessionProgress,
+            timerEndsAt = endsAt,
+            runningSecondsRemaining = endsAt?.let { (Duration.between(now, it).toMillis() + 999) / 1000 },
         )
     }
 
@@ -168,6 +175,7 @@ object SnapshotBuilder {
                 it.habit.id, it.habit.name, it.value, it.habit.sessionSeconds, it.habit.sessions,
                 it.timerRunning, it.sessionRemaining, it.habit.icon,
                 if (it.habit.id in choices) choices else listOf(it.habit.id) + choices,
+                it.timerEndsAt,
             )
         }
         return TodaySnapshot(today, habits, active)

@@ -81,7 +81,7 @@ object Notifications {
             nm.cancel(ID_TIMER)
         } else {
             val nowMs = System.currentTimeMillis()
-            val endMs = sessionEndMs ?: (nowMs + running.sessionRemaining * 1_000L)
+            val endMs = running.timerEndsAt?.toEpochMilli() ?: sessionEndMs ?: (nowMs + running.sessionRemaining * 1_000L)
             val progress = requireNotNull(
                 TimerProgress.from(
                     running,
@@ -158,6 +158,7 @@ object Notifications {
                 .setSmallIcon(R.drawable.ic_stat_dot)
                 .setContentTitle(
                     if (all) context.getString(R.string.goal_done_title, habit.name)
+                    else if (done == 0) context.getString(R.string.session_finished_title, habit.name)
                     else context.getString(R.string.session_done_title, habit.name, done, habit.sessions),
                 )
                 .setContentText(

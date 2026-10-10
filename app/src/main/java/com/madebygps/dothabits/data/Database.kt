@@ -47,6 +47,7 @@ data class EntryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val habitId: Long,
     val epochDay: Long,
+    /** Count/slips, or signed seconds adjustment to timer credit. */
     val amount: Long,
     val createdAtMs: Long,
 )
@@ -122,10 +123,18 @@ interface HabitDao {
     @Query("SELECT * FROM timer_sessions WHERE id = :id") suspend fun session(id: Long): TimerSessionEntity?
     @Insert suspend fun insertSession(s: TimerSessionEntity): Long
     @Update suspend fun updateSession(s: TimerSessionEntity)
-    @Query("DELETE FROM timer_sessions WHERE id = :id") suspend fun deleteSession(id: Long)
-    @Query("UPDATE timer_sessions SET lastAliveMs = :nowMs WHERE state = 'RUNNING' AND bootCount = :bootCount")
-    suspend fun touchRunning(nowMs: Long, bootCount: Int)
+    @Transaction
+    suspend fun writeSessions(updates: List<TimerSessionEntity>, newSession: TimerSessionEntity? = null) {
+        updates.forEach { updateSession(it) }
+        if (newSession != null) insertSession(newSession)
+    }
 
+    @Transaction
+    suspend fun updateHabitWithSessions(habit: HabitEntity, sessions: List<TimerSessionEntity>) {
+        writeSessions(sessions)
+        update(habit)
+    }
+    @Query("DELETE FROM timer_sessions WHERE id = :id") suspend fun deleteSession(id: Long)
     // Steps cache
     @Query("SELECT * FROM steps_days") fun observeSteps(): Flow<List<StepsDayEntity>>
     @Upsert suspend fun upsertSteps(rows: List<StepsDayEntity>)

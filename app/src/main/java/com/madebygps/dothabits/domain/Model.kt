@@ -115,7 +115,7 @@ data class Entry(
     val id: Long = 0,
     val habitId: Long,
     val date: LocalDate,
-    /** Count for COUNT habits, seconds for TIMED habits. */
+    /** Count for COUNT habits; signed seconds adjustment to recorded credit for TIMED habits. */
     val amount: Long,
     val createdAt: Instant,
 )

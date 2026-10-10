@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Illustrative timer tile: one completed session and independent current-session fill. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
-    <path android:fillColor="@color/widget_background" android:pathData="M24,0h52a24,24 0 0 1 24,24v52a24,24 0 0 1 -24,24h-52a24,24 0 0 1 -24,-24v-52a24,24 0 0 1 24,-24z"/>
-    <group android:translateX="14" android:translateY="14" android:scaleX="1.5" android:scaleY="1.5">
-        <group>
-            <clip-path android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
-            <path android:fillColor="@color/widget_foreground" android:fillAlpha="0.48" android:pathData="M2.5,24H45.5V45.5H2.5Z"/>
-        </group>
-        <path android:strokeColor="@color/widget_foreground" android:strokeWidth="3" android:trimPathStart="0.015" android:trimPathEnd="0.485" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
-        <path android:strokeColor="@color/widget_track" android:strokeWidth="3" android:trimPathStart="0.515" android:trimPathEnd="0.985" android:pathData="M24,2.5H36.47A9.03,9.03 0 0,1 45.5,11.53V36.47A9.03,9.03 0 0,1 36.47,45.5H11.53A9.03,9.03 0 0,1 2.5,36.47V11.53A9.03,9.03 0 0,1 11.53,2.5Z"/>
-        <path android:fillColor="@color/widget_foreground" android:pathData="M22.4,20a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M18.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M26.4,24a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0M22.4,28a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0"/>
-    </group>
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/widget_background" />
+            <corners android:radius="8dp" />
+            <size android:width="100dp" android:height="100dp" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/habit_widget_transparent_preview" />
+</layer-list>

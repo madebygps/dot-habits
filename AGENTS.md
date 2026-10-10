@@ -9,10 +9,22 @@ Nothing OS 4.x / Android 16. Read "Product rules" below before changing behaviou
 export JAVA_HOME=/path/to/jdk-17          # AGP 9 needs JDK 17+
 ./gradlew :app:testDebugUnitTest          # pure-JVM domain tests (fast)
 ./gradlew :app:assembleDebug :app:lintDebug
-./gradlew :app:installDebug               # install the updated build on the connected phone
+python3 scripts/install_debug.py          # guarded install, only from the designated checkout
 ```
 
-- After every change, install the updated debug build on the connected Nothing Phone (3). If no phone is available, report that the install is blocked.
+- Only the designated install checkout may update the connected Nothing Phone (3). Other sessions
+  build/test only and hand off their changes to that checkout; never install their APKs directly.
+  The first successful guarded install designates its checkout. Ownership is stored per phone under
+  `~/.local/state/dot-habits/`, with a shared lock to prevent concurrent installs.
+- After changes in the designated checkout, use `python3 scripts/install_debug.py`. It fetches
+  `origin/main`, rejects checkouts missing main or the installed commit, checks that sources did not
+  change during the build, and verifies the installed APK metadata. Fetch/build/device failures block
+  installation; report the blocker, never bypass it with `adb install` or Gradle install tasks.
+- Transfer ownership with `--claim` only when the user explicitly approves moving installation to
+  another checkout. Integrate the previous checkout's changes first; its owner must commit and install
+  a clean build before transferring a modified installed build. Use `--serial SERIAL` with multiple devices.
+- Settings > About and the home About sheet show the Git commit, modified marker and UTC build time.
+  No provenance on an older APK is a one-time bootstrap, not proof that its source is current.
 - `compileSdk 37` (required by current AndroidX), `minSdk = targetSdk = 36`.
 - AGP 9 built-in Kotlin: do not add the `kotlin-android` plugin.
 - The Nothing GlyphMatrix SDK is committed at `app/libs/glyph-matrix-sdk-2.0.aar` (no Maven artifact

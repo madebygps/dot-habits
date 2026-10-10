@@ -5,7 +5,7 @@ Black UI, dot-matrix icons, one highlight colour. Works fully offline, with no a
 
 ## Features
 
-- **Home:** six rounded-square habit tiles per page (2×3), up to 24 habits. Hold to log a count or start/pause a timer; tap for details. Steps update automatically.
+- **Home:** six rounded-square habit tiles per page (2×3), up to 24 habits. Every tile, including Add, reserves the same name and caption lines so squares stay aligned when captions change. Hold to log a count or start/pause a timer; tap for details. Steps update automatically.
 - **Progress:** count borders light one segment per logged count; timer borders count finished sessions while the interior fills bottom-up within the current session and retains its level when paused. Finishing a session lights its border segment and resets the interior for the next one. Steps fill toward the daily goal. Reached goals become solid with inverted icons; avoid habits keep a dashed outline and show slips/allowance rather than a success fill.
 - **About:** tap the centered app icon for the installed version, creator credit, and GitHub repo.
 - **Habit types:** check/count (e.g. meds 2×/day), timer (sessions × minutes, e.g. Deep Work 4 × 25), steps, and avoid.

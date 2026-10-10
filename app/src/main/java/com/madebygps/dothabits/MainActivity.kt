@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                             onDeleted = { nav.popBackStack("home", inclusive = false) },
                         )
                     }
-                    composable("stats") { StatsScreen(vm = vm, onOpen = { id -> nav.navigate("detail/$id") }) }
+                    composable("stats") { StatsScreen(vm = vm) }
                     composable("settings") { SettingsScreen(vm = vm, onGuide = { nav.navigate("guide") }) }
                     composable("guide") { GuideScreen() }
                 }

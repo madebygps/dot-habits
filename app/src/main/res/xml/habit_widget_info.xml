@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Display-only widget for one habit, picked on placement (reconfigurable). Resizes from compact
-  ring-only tiles to wide, stacked and large layouts with progress details; see SingleLayout in
+  rounded-square tiles to wide, stacked and large layouts with progress details; see SingleLayout in
   HabitWidget.kt.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"

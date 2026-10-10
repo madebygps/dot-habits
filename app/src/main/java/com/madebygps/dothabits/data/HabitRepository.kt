@@ -165,7 +165,7 @@ class HabitRepository(
 
     // ---- Logging --------------------------------------------------------------------------
 
-    /** Press-and-hold on a circle in the app. */
+    /** Press-and-hold on a habit tile in the app. */
     suspend fun hold(habitId: Long): HoldResult {
         val snap = currentSnapshot()
         val t = snap.habits.firstOrNull { it.habit.id == habitId } ?: return HoldResult.AlreadyDone

@@ -1,6 +1,6 @@
 package com.madebygps.dothabits.domain
 
-/** What a press-and-hold on a habit circle does. Never used by widgets or the Glyph Toy. */
+/** What a press-and-hold on a habit tile does. Never used by widgets or the Glyph Toy. */
 enum class HoldAction { LOG_ONE, TOGGLE_TIMER, NONE_ALREADY_DONE, NONE_AUTOMATIC }
 
 object CompletionPolicy {

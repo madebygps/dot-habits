@@ -39,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,6 +52,7 @@ import com.madebygps.dothabits.domain.HabitHistory
 import com.madebygps.dothabits.domain.HabitLabels
 import com.madebygps.dothabits.domain.HabitRules
 import com.madebygps.dothabits.domain.HabitToday
+import com.madebygps.dothabits.domain.HabitTileState
 import com.madebygps.dothabits.domain.HabitType
 import com.madebygps.dothabits.domain.SessionState
 import com.madebygps.dothabits.domain.StreakUnit
@@ -131,9 +134,13 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
 private fun Hero(t: HabitToday, vm: MainViewModel) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(180.dp)) {
-            val filled = t.status == com.madebygps.dothabits.domain.TodayStatus.DONE
-            Ring(t.fraction, t.segments, Modifier.fillMaxSize(), dashedTrack = t.habit.isNegative, filled = filled) {
-                DotIcon(t.habit.icon, Modifier.size(72.dp), if (filled) androidx.compose.ui.graphics.Color.Black else Palette.Text)
+            val tile = HabitTileState.from(t)
+            HabitTile(tile, Modifier.fillMaxSize().semantics { contentDescription = HabitLabels.accessibility(t) }) {
+                DotIcon(t.habit.icon, Modifier.size(72.dp), when {
+                    tile.solid -> Palette.Black
+                    tile.dimmed -> Palette.Dim
+                    else -> Palette.Text
+                })
             }
             if (t.habit.type == HabitType.TIMED) {
                 PlayPauseButton(t.timerRunning, 54.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id, t.timerRunning) }
@@ -145,7 +152,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
             DotText("%d:%02d:%02d".format(s / 3600, (s % 3600) / 60, s % 60), dot = 5.dp)
             Spacer(Modifier.height(8.dp))
             if (t.timerRunning) {
-                Text("${TimerMath.formatClock(t.sessionRemaining)} LEFT IN SESSION", style = MaterialTheme.typography.labelMedium, color = LocalHighlight.current)
+                Text("${TimerMath.formatClock(t.tileSessionProgress?.remainingSeconds ?: t.sessionRemaining)} LEFT IN SESSION", style = MaterialTheme.typography.labelMedium, color = LocalHighlight.current)
             }
         }
         HabitLabels.detail(t).takeIf { it.isNotEmpty() }?.let {
@@ -371,6 +378,16 @@ private fun HelpDialog(t: HabitToday, onDismiss: () -> Unit) {
         title = { Text("Reading this screen") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("HABIT TILE", style = MaterialTheme.typography.labelSmall)
+                Text(
+                    when {
+                        t.habit.isNegative -> "The dashed border marks an avoid habit. Slips are shown against your allowance; an ongoing day never fills as a completed day."
+                        t.habit.type == HabitType.TIMED -> "Border segments count finished sessions. The interior fills during the current session and holds its level when paused. Finishing a session resets the interior and lights its border segment."
+                        t.habit.type == HabitType.STEPS -> "The interior fills toward your daily step goal. Missing readings show NO STEP DATA, not an estimated total."
+                        else -> "Each logged count lights one border segment. The interior becomes solid when the goal is reached."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
                 Text("STATS", style = MaterialTheme.typography.labelSmall)
                 Text("CURRENT · consecutive successful $period, ending now.", style = MaterialTheme.typography.bodySmall)
                 Text("BEST · longest run of successful $period ever.", style = MaterialTheme.typography.bodySmall)
@@ -408,12 +425,22 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDayMark(
     highlight: androidx.compose.ui.graphics.Color,
     colors: DotColors,
 ) {
-    val rad = size.minDimension / 2
+    val side = size.minDimension
+    fun mark(color: androidx.compose.ui.graphics.Color, stroke: Float = 0f) {
+        val inset = stroke / 2
+        drawRoundRect(
+            color,
+            topLeft = Offset(inset, inset),
+            size = Size(side - stroke, side - stroke),
+            cornerRadius = CornerRadius(side * TileGeometry.CORNER_FRACTION),
+            style = if (stroke > 0) Stroke(stroke) else androidx.compose.ui.graphics.drawscope.Fill,
+        )
+    }
     when (status) {
-        DayStatus.MET -> drawCircle(highlight, rad)
-        DayStatus.PARTIAL -> drawCircle(highlight, rad - 2.dp.toPx(), style = Stroke(2.dp.toPx()))
-        DayStatus.MISSED -> drawCircle(colors.dim, rad - 2.dp.toPx(), style = Stroke(1.5.dp.toPx()))
-        DayStatus.PENDING -> drawCircle(colors.text, rad - 2.dp.toPx(), style = Stroke(1.dp.toPx()))
+        DayStatus.MET -> mark(highlight)
+        DayStatus.PARTIAL -> mark(highlight, 2.dp.toPx())
+        DayStatus.MISSED -> mark(colors.dim, 1.5.dp.toPx())
+        DayStatus.PENDING -> mark(colors.text, 1.dp.toPx())
         else -> Unit
     }
 }

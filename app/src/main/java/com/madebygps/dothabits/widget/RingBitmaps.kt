@@ -4,14 +4,16 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.PathMeasure
 import android.graphics.RectF
 import androidx.core.graphics.createBitmap
 import com.madebygps.dothabits.domain.DotIcons
 import com.madebygps.dothabits.domain.HabitToday
-import com.madebygps.dothabits.domain.TodayStatus
-import com.madebygps.dothabits.ui.RingGeometry
+import com.madebygps.dothabits.domain.HabitTileState
+import com.madebygps.dothabits.ui.TileGeometry
+import kotlin.math.roundToInt
 
-/** Canvas rendering of the same ring the app draws in Compose (shared [RingGeometry]). */
+/** White bitmap masks of the app's shared rounded-square habit tile; Glance supplies the tints. */
 object RingBitmaps {
     private const val MASK = 0xFFFFFFFF.toInt()
 
@@ -26,45 +28,61 @@ object RingBitmaps {
     )
 
     fun layers(t: HabitToday, sizePx: Int): Layers {
+        val state = HabitTileState.from(t)
         val track = createBitmap(sizePx, sizePx)
         val progress = createBitmap(sizePx, sizePx)
         val icon = createBitmap(sizePx, sizePx)
-        val stroke = sizePx * RingGeometry.STROKE_FRACTION
+        val stroke = sizePx * TileGeometry.STROKE_FRACTION
         val inset = stroke / 2f + 1f
         val rect = RectF(inset, inset, sizePx - inset, sizePx - inset)
+        val contour = TileGeometry.contour(rect)
+        val measure = PathMeasure(contour, true)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
             strokeWidth = stroke
             strokeCap = Paint.Cap.BUTT
             color = MASK
         }
-        val arcs = RingGeometry.arcs(t.fraction, t.segments)
-        if (t.status == TodayStatus.DONE) {
-            Canvas(progress).drawCircle(
-                sizePx / 2f,
-                sizePx / 2f,
-                sizePx / 2f - 1f,
-                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = MASK },
-            )
+        val progressCanvas = Canvas(progress)
+        if (state.solid) {
+            paint.style = Paint.Style.FILL_AND_STROKE
+            progressCanvas.drawPath(contour, paint)
         } else {
-            val trackCanvas = Canvas(track)
-            if (t.habit.isNegative) {
-                paint.pathEffect = DashPathEffect(floatArrayOf(stroke * 0.6f, stroke * 0.6f), 0f)
+            if (state.interiorFraction > 0f) {
+                progressCanvas.save()
+                progressCanvas.clipPath(contour)
+                paint.alpha = (255 * TileGeometry.FILL_ALPHA).roundToInt()
+                progressCanvas.drawRect(
+                    rect.left, rect.bottom - rect.height() * state.interiorFraction,
+                    rect.right, rect.bottom, paint,
+                )
+                progressCanvas.restore()
             }
-            arcs.track.forEach { (start, sweep) -> trackCanvas.drawArc(rect, start, sweep, false, paint) }
-            paint.pathEffect = null
-            val progressCanvas = Canvas(progress)
-            arcs.filled.forEach { (start, sweep) -> progressCanvas.drawArc(rect, start, sweep, false, paint) }
+            paint.alpha = 255
+            paint.style = Paint.Style.STROKE
+            if (state.dashed) {
+                paint.pathEffect = DashPathEffect(floatArrayOf(stroke * 0.6f, stroke * 0.6f), 0f)
+                progressCanvas.drawPath(contour, paint)
+                paint.pathEffect = null
+            } else {
+                val segments = TileGeometry.segments(state.segments)
+                val trackCanvas = Canvas(track)
+                segments.forEach { segment ->
+                    trackCanvas.drawPath(TileGeometry.portion(measure, segment.start, segment.end), paint)
+                }
+                TileGeometry.filledSegments(state.borderFraction, state.segments).forEach { segment ->
+                    progressCanvas.drawPath(TileGeometry.portion(measure, segment.start, segment.end), paint)
+                }
+            }
         }
         drawIcon(Canvas(icon), sizePx, t.habit.icon)
         return Layers(
             track = track,
             progress = progress,
             icon = icon,
-            progressTone = if (t.status == TodayStatus.SLIPPED) Tone.DIM else Tone.FOREGROUND,
-            iconTone = when (t.status) {
-                TodayStatus.DONE -> Tone.BACKGROUND
-                TodayStatus.REST -> Tone.DIM
+            progressTone = if (state.dimmed) Tone.DIM else Tone.FOREGROUND,
+            iconTone = when {
+                state.solid -> Tone.BACKGROUND
+                state.dimmed -> Tone.DIM
                 else -> Tone.FOREGROUND
             },
         )
@@ -72,14 +90,14 @@ object RingBitmaps {
 
     private fun drawIcon(c: Canvas, sizePx: Int, icon: String) {
         val bits = DotIcons.bits(icon)
-        val area = sizePx * RingGeometry.ICON_FRACTION
+        val area = sizePx * TileGeometry.ICON_FRACTION
         val cell = area / DotIcons.SIZE
         val origin = (sizePx - area) / 2f
         val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = MASK }
         for (i in bits.indices) if (bits[i]) {
             val x = origin + (i % DotIcons.SIZE + 0.5f) * cell
             val y = origin + (i / DotIcons.SIZE + 0.5f) * cell
-            c.drawCircle(x, y, cell * RingGeometry.DOT_RADIUS_FRACTION, dot)
+            c.drawCircle(x, y, cell * TileGeometry.DOT_RADIUS_FRACTION, dot)
         }
     }
 }

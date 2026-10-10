@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Display-only widget showing up to the first six habit rings. Default 2x2 uses the app's
+  Display-only widget showing up to the first six rounded-square habit tiles. Default 2x2 uses the app's
   2-column x 3-row grid; one-row and wide sizes use shape-specific grids, and labels/captions
   appear when there is room (see WidgetGrid in DotWidget.kt).
 -->

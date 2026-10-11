@@ -46,8 +46,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(request) {
                 request?.let { nav.navigate("detail/$it") { launchSingleTop = true }; navRequests.value = null }
             }
-            val ui by vm.ui.collectAsStateWithLifecycle()
-            DotTheme(allHabitsOnStreak = ui.snapshot.allHabitsOnStreak) {
+            DotTheme {
                 NavHost(
                     nav,
                     startDestination = "home",

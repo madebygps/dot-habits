@@ -72,7 +72,7 @@ Running sessions publish passive Live Update progress for Nothing's system Glyph
 
 Reminders notify you on scheduled days that are not done yet. Allow notifications in Settings; without exact-alarm permission, reminders and timer completion alerts may arrive late.
 
-The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with no colour customization. While every tracked habit has a current streak above zero, the app's dot titles, icons and progress accents turn warm gold; body text stays neutral. The accent returns to monochrome when any current streak is zero or there are no habits. This celebrates current streaks, not 100% completion, and is independent of the Insights range. Widgets and Glyph remain monochrome. Insights uses green for positive changes and red for negative changes. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
+The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Widgets and Glyph remain monochrome. Insights uses green for positive changes and red for negative changes. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
 
 There is no Essential Space integration or Essential Key remapping.
 

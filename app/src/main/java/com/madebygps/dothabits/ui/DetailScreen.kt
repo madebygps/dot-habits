@@ -176,7 +176,7 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
             val foreground = when {
                 tile.solid -> Palette.Black
                 tile.dimmed -> Palette.Dim
-                else -> LocalHighlight.current
+                else -> Palette.Text
             }
             HabitTile(tile, Modifier.fillMaxSize().clearAndSetSemantics {
                 contentDescription = "${HabitLabels.accessibility(t)}. ${progress.primary}. ${progress.label}"

@@ -142,10 +142,10 @@ internal fun dotColorScheme(dark: Boolean): ColorScheme {
 }
 
 @Composable
-fun DotTheme(allHabitsOnStreak: Boolean = false, content: @Composable () -> Unit) {
+fun DotTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val colors = if (dark) DarkDotColors else LightDotColors
-    val displayHighlight = dotHighlight(dark, allHabitsOnStreak)
+    val displayHighlight = colors.text
     val scheme = dotColorScheme(dark)
     val base = Typography()
     val typography = base.copy(
@@ -163,11 +163,6 @@ fun DotTheme(allHabitsOnStreak: Boolean = false, content: @Composable () -> Unit
     }
 }
 
-internal fun dotHighlight(dark: Boolean, allHabitsOnStreak: Boolean): Color =
-    if (allHabitsOnStreak) {
-        if (dark) Color(0xFFD6B58C) else Color(0xFF79572F)
-    } else if (dark) Color.White else Color.Black
-
 @Composable
 fun DotScreenTitle(text: String) {
     DotText(text, modifier = Modifier.semantics(mergeDescendants = true) { heading() }, dot = 4.dp)
@@ -181,7 +176,7 @@ internal fun fitsDotText(text: String, cell: Dp, maxWidth: Dp, maxHeight: Dp): B
 /** Scalable dot accent with readable text when glyphs or available space cannot support it. */
 @Composable
 fun DotText(text: String, modifier: Modifier = Modifier, dot: Dp = 3.dp, color: Color? = null) {
-    val resolvedColor = color ?: LocalHighlight.current
+    val resolvedColor = color ?: LocalDotColors.current.text
     val fontSize = (dot.value * DotFont.H).sp
     val scaledCell = with(LocalDensity.current) { fontSize.toDp() / DotFont.H }
     val chars = text.uppercase(Locale.ROOT)
@@ -215,7 +210,7 @@ fun DotText(text: String, modifier: Modifier = Modifier, dot: Dp = 3.dp, color: 
 
 @Composable
 fun DotIcon(name: String, modifier: Modifier = Modifier, color: Color? = null) {
-    val resolvedColor = color ?: LocalHighlight.current
+    val resolvedColor = color ?: LocalDotColors.current.text
     Canvas(modifier) {
         val bits = DotIcons.bits(name)
         val cell = size.minDimension / DotIcons.SIZE

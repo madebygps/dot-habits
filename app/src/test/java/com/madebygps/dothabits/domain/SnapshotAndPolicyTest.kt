@@ -54,21 +54,6 @@ class SnapshotAndPolicyTest {
         assertEquals(5, s.dueCount)
     }
 
-    @Test fun allHabitStreakCelebrationRequiresEveryHabitAndIsNotCompletion() {
-        assertEquals(false, TodaySnapshot.Empty.allHabitsOnStreak)
-        assertEquals(false, snapshot(habits = listOf(creatine, meds)).allHabitsOnStreak)
-        val established = snapshot(
-            entries = listOf(entry(creatine, created), entry(creatine, created.plusDays(1))),
-            habits = listOf(creatine),
-        )
-        assertTrue(established.allHabitsOnStreak)
-        assertEquals(0f, established.overallFraction, 0f)
-        assertEquals(false, snapshot(
-            entries = listOf(entry(creatine, created), entry(creatine, created.plusDays(1))),
-            habits = listOf(creatine, meds),
-        ).allHabitsOnStreak)
-    }
-
     @Test fun stepsWithoutDataAreNeverFaked() {
         val s = snapshot()
         val w = s.habits.first { it.habit.id == walk.id }

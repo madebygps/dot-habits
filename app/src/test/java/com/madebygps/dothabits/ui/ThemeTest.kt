@@ -3,23 +3,9 @@ package com.madebygps.dothabits.ui
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThemeTest {
-    @Test fun streakHighlightIsGoldWithReadableContrastAndNeutralDefault() {
-        for (dark in listOf(false, true)) {
-            val neutral = if (dark) Color.White else Color.Black
-            val background = if (dark) Color.Black else Color.White
-            assertEquals(neutral, dotHighlight(dark, false))
-            val gold = dotHighlight(dark, true)
-            assertTrue(gold.red > gold.green && gold.green > gold.blue)
-            val contrast = (maxOf(gold.luminance(), background.luminance()) + .05f) /
-                (minOf(gold.luminance(), background.luminance()) + .05f)
-            assertTrue("Gold must be readable in both themes", contrast >= 4.5f)
-        }
-    }
-
     @Test fun foregroundAndBackgroundFollowSystemTheme() {
         for (dark in listOf(false, true)) {
             val scheme = dotColorScheme(dark)

@@ -120,3 +120,12 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }
+
+tasks.withType<Test>().configureEach {
+    val guideFile = rootProject.layout.projectDirectory.file("docs/product.md")
+    val updateGuide = providers.gradleProperty("updateProductGuide").isPresent
+    systemProperty("productGuide.path", guideFile.asFile.absolutePath)
+    systemProperty("productGuide.update", updateGuide)
+    inputs.files(guideFile)
+    outputs.upToDateWhen { !updateGuide }
+}

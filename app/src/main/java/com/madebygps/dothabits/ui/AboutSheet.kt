@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import com.madebygps.dothabits.domain.HabitGuide
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +37,7 @@ fun AboutSheet(onDismiss: () -> Unit) {
             BuildDetails()
             Text("Made by Gwyneth Peña-Siguenza (@madebygps)")
             Text(
-                "Built for Nothing Phone (3). Local-first, with no accounts, analytics, or ads.",
+                HabitGuide.summary,
                 color = Palette.Muted,
             )
             TextButton(onClick = { uriHandler.openUri("https://github.com/madebygps/dot-habits") }) {

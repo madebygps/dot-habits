@@ -8,7 +8,8 @@ See [README](README.md) for setup and build commands.
 the app and generated [product guide](docs/product.md). Read it before changing behaviour; verify
 claims against implementation and tests. Do not edit the generated guide directly.
 
-After changing guide content, regenerate it and include the result:
+If product functionality or goals change, update `HabitGuide.kt` and regenerate `docs/product.md`.
+Include both changes so the app and published guide stay consistent:
 
 ```sh
 ./gradlew :app:testDebugUnitTest --tests '*ProductGuideTest' -PupdateProductGuide

@@ -42,17 +42,23 @@ Edit the selected day's count or slips, or use Adjust completion to set its tota
 
 Habit statistics is read-only and always visible. CURRENT and BEST streaks appear here alongside completion statistics. DAYS MET counts past scheduled days whose target was met. LAST 30D uses closed scheduled days in the last 30 days, or the last four finished weeks for weekly schedules. Today, the current week, rest days and the weekly creation grace period are excluded from this habit-level completion rate.
 
-## Overall statistics
+## Insights
 
-Choose 30 days, 60 days, 90 days or All time. The selected range applies to the completion rate, comparison and trend. Statistics values and labels use regular monospace lettering for consistent readability.
+Rates compare with the equally long period just before your selected range.
+
+Green ↑ means improved, red ↓ means declined, and a neutral dash means unchanged after rounding. -- means no data for this range. Comparison markers appear only when both date ranges have data; otherwise the percentage has no marker.
+
+Today, unfinished weeks, rest days and missing step goals are excluded. Detailed rules are in Settings > How Dot Habits works.
+
+Insights shows patterns across your habits rather than repeating individual habit history. Choose 7, 30, 60 or 90 days. The range picker and centred overall summary stay above two tabs: Dashboard and Missed goals. The summary shows the date range above a prominent percentage, with goals met below. Dashboard opens by default; each tab shows only its own insight. The selected range applies to both tabs. Open ? for a short explanation of comparisons, markers and exclusions.
 
 Each past scheduled day is one goal. Each finished week is one goal for weekly habits, attributed to the week's first day. Rest days, today and the current week don't count. Unlike the habit-level LAST 30D rate, overall statistics includes closed creation weeks and backfilled history.
 
-Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero. A weekly step goal already met by measured steps counts even if some days are missing.
+Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero. A weekly step goal already met by measured steps counts even if some days are missing. The overall percentage stays neutral and has no streak flame.
 
-The comparison chip shows percentage points, not relative percent change. For example, 88% now versus 77% before is +11 points. It compares with the equally long period just before. All time has no comparison. Changes in your mix of habits can affect the overall rate.
+Dashboard shows every habit in home order in a two-column grid with shared dividers. Each cell has the habit icon, name and current completion rate. Both periods must have measured goals for a comparison. Changes are rounded to whole percentage points; small samples can produce large shifts. Direction and measured counts are also described to TalkBack. Edits to goals or schedules can change historical rates.
 
-Bars group the selected range by week, or month for long ranges. Edge bars can cover only part of a week or month.
+Where goals were missed lists habits by missed goal count and shows each habit's share of all measured misses. Missing step data is excluded. Daily habits offer more goals than weekly habits, so this is not a ranking of habit difficulty. The overall rate can also change when the mix of habits changes.
 
 ## Widgets, Glyph Toys & live progress
 
@@ -66,7 +72,7 @@ Running sessions publish passive Live Update progress for Nothing's system Glyph
 
 Reminders notify you on scheduled days that are not done yet. Allow notifications in Settings; without exact-alarm permission, reminders and timer completion alerts may arrive late.
 
-The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
+The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Widgets and Glyph remain monochrome. Insights uses green for positive changes and red for negative changes. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
 
 There is no Essential Space integration or Essential Key remapping.
 

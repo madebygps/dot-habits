@@ -23,12 +23,18 @@ object HabitGuide {
     private const val toys = "Widgets and the Habit Glyph Toy are display-only. Tap a widget to open the app. Enable either or both toys through Settings > Toys > Set up; choose the Habit toy's habit under Displayed habit. Selection survives app restarts; if that habit is deleted, choose another. The Timers toy controls timers only: long-press starts or pauses, and holding at least 2 seconds switches timers on release without also toggling. Short press is Nothing's system toy cycling. Neither toy logs completions directly."
     private const val live = "Running sessions publish passive Live Update progress for Nothing's system Glyph Progress, complementary to the Timers toy. $glyphProgressSetup Pause, completion or discard removes progress; dismissal hides it for that planned session, including after resume. Android ticks the countdown, but progress refresh is best effort, at most every 15 seconds while the process is alive. Sleep or process death can pause bar refresh. Nothing OS controls visual effects; uninterrupted animation is not promised. Completion sound and vibration use the separate session-finished notification."
 
-    val statisticsHelp = GuideSection("Overall statistics", listOf(
-        "Choose 30 days, 60 days, 90 days or All time. The selected range applies to the completion rate, comparison and trend. Statistics values and labels use regular monospace lettering for consistent readability.",
+    val statisticsQuickHelp = listOf(
+        "Rates compare with the equally long period just before your selected range.",
+        "Green ↑ means improved, red ↓ means declined, and a neutral dash means unchanged after rounding. -- means no data for this range. Comparison markers appear only when both date ranges have data; otherwise the percentage has no marker.",
+        "Today, unfinished weeks, rest days and missing step goals are excluded. Detailed rules are in Settings > How Dot Habits works.",
+    )
+
+    val statisticsHelp = GuideSection("Insights", statisticsQuickHelp + listOf(
+        "Insights shows patterns across your habits rather than repeating individual habit history. Choose 7, 30, 60 or 90 days. The range picker and centred overall summary stay above two tabs: Dashboard and Missed goals. The summary shows the date range above a prominent percentage, with goals met below. Dashboard opens by default; each tab shows only its own insight. The selected range applies to both tabs. Open ? for a short explanation of comparisons, markers and exclusions.",
         "Each past scheduled day is one goal. Each finished week is one goal for weekly habits, attributed to the week's first day. Rest days, today and the current week don't count. Unlike the habit-level LAST 30D rate, overall statistics includes closed creation weeks and backfilled history.",
-        "Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero. A weekly step goal already met by measured steps counts even if some days are missing.",
-        "The comparison chip shows percentage points, not relative percent change. For example, 88% now versus 77% before is +11 points. It compares with the equally long period just before. All time has no comparison. Changes in your mix of habits can affect the overall rate.",
-        "Bars group the selected range by week, or month for long ranges. Edge bars can cover only part of a week or month.",
+        "Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero. A weekly step goal already met by measured steps counts even if some days are missing. The overall percentage stays neutral and has no streak flame.",
+        "Dashboard shows every habit in home order in a two-column grid with shared dividers. Each cell has the habit icon, name and current completion rate. Both periods must have measured goals for a comparison. Changes are rounded to whole percentage points; small samples can produce large shifts. Direction and measured counts are also described to TalkBack. Edits to goals or schedules can change historical rates.",
+        "Where goals were missed lists habits by missed goal count and shows each habit's share of all measured misses. Missing step data is excluded. Daily habits offer more goals than weekly habits, so this is not a ranking of habit difficulty. The overall rate can also change when the mix of habits changes.",
     ))
 
     val privacy = GuideSection("Privacy & Health Connect", listOf(
@@ -58,7 +64,7 @@ object HabitGuide {
         )),
         GuideSection("Reminders & display", listOf(
             "Reminders notify you on scheduled days that are not done yet. Allow notifications in Settings; without exact-alarm permission, reminders and timer completion alerts may arrive late.",
-            "The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.",
+            "The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Widgets and Glyph remain monochrome. Insights uses green for positive changes and red for negative changes. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.",
             "There is no Essential Space integration or Essential Key remapping.",
         )),
         privacy,

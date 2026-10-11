@@ -3,30 +3,57 @@ package com.madebygps.dothabits.domain
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 
-enum class StatsRange(val days: Int?, val label: String) {
-    D30(30, "30 days"), D60(60, "60 days"), D90(90, "90 days"), ALL(null, "All time"),
+enum class StatsRange(val days: Int, val label: String) {
+    D7(7, "7 days"), D30(30, "30 days"), D60(60, "60 days"), D90(90, "90 days"),
 }
 
 /** successes / opportunities; rate is null when there was nothing to count. */
 data class Tally(val met: Int = 0, val total: Int = 0) {
     val rate: Float? get() = if (total == 0) null else met.toFloat() / total
+    val percentage: String get() = rate?.let { "${(it * 100).roundToInt()}%" } ?: "--"
+    val missed: Int get() = total - met
+    fun changePoints(previous: Tally?): Int? {
+        val currentRate = rate ?: return null
+        val previousRate = previous?.rate ?: return null
+        return ((currentRate - previousRate) * 100).roundToInt()
+    }
     operator fun plus(other: Tally) = Tally(met + other.met, total + other.total)
 }
 
 data class StatsBucket(val start: LocalDate, val tally: Tally)
 
+data class HabitStats(val habit: Habit, val current: Tally, val previous: Tally?) {
+    val changePoints: Int? get() = current.changePoints(previous)
+}
+
+data class WeekdayStats(val day: DayOfWeek, val tally: Tally)
+
 data class RangeStats(
     val from: LocalDate,
     val to: LocalDate,
     val overall: Tally,
-    /** Same-length period right before [from]; null for ALL. */
+    /** Same-length period right before [from]. */
     val previous: Tally?,
     val buckets: List<StatsBucket>,
     val monthlyBuckets: Boolean,
     val hasHabits: Boolean,
     val missingStepGoals: Int,
-)
+    val habits: List<HabitStats> = emptyList(),
+    val weekdays: List<WeekdayStats> = emptyList(),
+) {
+    val previousTo: LocalDate get() = from.minusDays(1)
+    val previousFrom: LocalDate get() = from.minusDays(ChronoUnit.DAYS.between(from, to) + 1)
+    val changePoints: Int? get() = overall.changePoints(previous)
+    val improving: List<HabitStats> get() = habits.filter { (it.changePoints ?: 0) > 0 }
+        .sortedWith(compareByDescending<HabitStats> { it.changePoints }.thenBy { it.habit.id }).take(3)
+    val declining: List<HabitStats> get() = habits.filter { (it.changePoints ?: 0) < 0 }
+        .sortedWith(compareBy<HabitStats> { it.changePoints }.thenBy { it.habit.id }).take(3)
+    val missedGoals: List<HabitStats> get() = habits.filter { it.current.missed > 0 }
+        .sortedWith(compareByDescending<HabitStats> { it.current.missed }.thenBy { it.habit.id })
+    val trendTitle: String get() = if (monthlyBuckets) "MONTHLY COMPLETION" else "WEEKLY COMPLETION"
+}
 
 /**
  * Only closed opportunities count: scheduled past days or finished weeks, attributed to the
@@ -40,13 +67,21 @@ object Stats {
         range: StatsRange,
     ): RangeStats {
         val to = today.minusDays(1)
-        val earliest = histories.minOfOrNull { start(it) } ?: to
-        val from = range.days?.let { today.minusDays(it.toLong()) } ?: minOf(earliest, to)
-        val all = histories.flatMap { opportunities(it, today, firstDay, from, to) }
-        val previous = range.days?.let { days ->
-            val previousTo = from.minusDays(1)
-            val previousFrom = from.minusDays(days.toLong())
-            histories.flatMap { opportunities(it, today, firstDay, previousFrom, previousTo) }.tally()
+        val from = today.minusDays(range.days.toLong())
+        val currentByHabit = histories.map { opportunities(it, today, firstDay, from, to) }
+        val all = currentByHabit.flatten()
+        val previousTo = from.minusDays(1)
+        val previousFrom = from.minusDays(range.days.toLong())
+        val previousByHabit = histories.map { opportunities(it, today, firstDay, previousFrom, previousTo) }
+        val previous = previousByHabit.flatten().tally()
+        val habits = histories.mapIndexed { index, history ->
+            HabitStats(history.habit, currentByHabit[index].tally(), previousByHabit[index].tally())
+        }
+        val daily = histories.indices.filter { !histories[it].habit.schedule.isWeekly }
+            .flatMap { currentByHabit[it] }.groupBy { it.date.dayOfWeek }
+        val weekdays = (0L..6L).map { offset ->
+            val day = firstDay.plus(offset)
+            WeekdayStats(day, daily[day].orEmpty().tally())
         }
         val monthly = ChronoUnit.WEEKS.between(from, to) > 26
         val keyOf: (LocalDate) -> LocalDate =
@@ -59,7 +94,7 @@ object Stats {
             .toList()
         return RangeStats(
             from, to, all.tally(), previous, buckets, monthly,
-            histories.isNotEmpty(), all.count { it.met == null },
+            histories.isNotEmpty(), all.count { it.met == null }, habits, weekdays,
         )
     }
 

@@ -403,7 +403,7 @@ private fun BottomBar(pages: Int, current: Int, onPage: (Int) -> Unit, onStats: 
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BarButton("stats", "Statistics", onStats)
+        BarButton("stats", "Insights", onStats)
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             repeat(pages) { i ->

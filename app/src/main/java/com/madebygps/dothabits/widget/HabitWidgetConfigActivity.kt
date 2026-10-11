@@ -28,11 +28,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
-import com.madebygps.dothabits.data.AppSettings
 import com.madebygps.dothabits.domain.HabitTileState
 import com.madebygps.dothabits.domain.TodaySnapshot
 import com.madebygps.dothabits.dotApp
@@ -71,12 +69,9 @@ class HabitWidgetConfigActivity : ComponentActivity() {
         }
         val app = dotApp
         setContent {
-            val settings by app.settings.settings.let { flow ->
-                produceState(AppSettings(), flow) { flow.collect { value = it } }
-            }
             val snapshot by produceState(TodaySnapshot.Empty) { value = app.repository.currentSnapshot() }
             val scope = rememberCoroutineScope()
-            DotTheme(highlight = Color(settings.highlight)) {
+            DotTheme {
                 Surface(Modifier.fillMaxSize(), color = Palette.Black) {
                 Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 20.dp)) {
                     Text("PICK A HABIT", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 20.dp))

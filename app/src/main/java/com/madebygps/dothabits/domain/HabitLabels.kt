@@ -31,7 +31,7 @@ object HabitLabels {
         }
     }
 
-    /** Only essential state captions; a single in-tile dot represents an active streak. */
+    /** Only essential state captions; an in-tile flame represents an active streak. */
     fun caption(t: HabitToday): String = when {
         t.timerPaused -> "${TimerMath.formatClock(t.sessionRemaining)} PAUSED"
         t.habit.type == HabitType.STEPS && !t.hasData -> "NO STEP DATA"

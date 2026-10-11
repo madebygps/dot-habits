@@ -6,11 +6,7 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -27,7 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
@@ -48,8 +43,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -61,7 +54,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import com.madebygps.dothabits.data.HcAvailability
 import com.madebygps.dothabits.R
-import com.madebygps.dothabits.data.HighlightPalette
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.glyph.GlyphSupport
 import com.madebygps.dothabits.domain.HabitGuide
@@ -122,28 +114,9 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
             Modifier.fillMaxSize().padding(inner).padding(horizontal = 20.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Header("HIGHLIGHT")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                HighlightPalette.forEach { h ->
-                    val selected = h.argb == settings.highlight
-                    Box(
-                        Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, if (selected) Palette.Text else Color.Transparent, CircleShape)
-                            .padding(5.dp)
-                            .clip(CircleShape)
-                            .background(Color(h.argb))
-                            .clickable(onClickLabel = h.name) {
-                                scope.launch { app.settings.setHighlight(h.argb); Refresh.afterDataChange(app) }
-                            },
-                    )
-                }
-            }
-
             Header("WEEK STARTS ON")
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                DayOfWeek.entries.forEach { d ->
+                listOf(DayOfWeek.MONDAY, DayOfWeek.SUNDAY).forEach { d ->
                     FilterChip(
                         selected = settings.weekStart == d,
                         onClick = { scope.launch { app.settings.setWeekStart(d); Refresh.afterDataChange(app) } },

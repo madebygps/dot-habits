@@ -2,26 +2,26 @@ package com.madebygps.dothabits.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,15 +46,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.madebygps.dothabits.domain.DayStatus
 import com.madebygps.dothabits.domain.DetailPresentation
@@ -92,8 +94,6 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
     val weekStart = raw.settings.weekStart
     var editing by remember { mutableStateOf<LocalDate?>(null) }
     var showHelp by remember { mutableStateOf(false) }
-    var calendarExpanded by remember(habitId) { mutableStateOf(false) }
-    var statisticsExpanded by remember(habitId) { mutableStateOf(false) }
     var selectedDay by remember(habitId) { mutableStateOf(ui.snapshot.date) }
     var activityDay by remember(habitId) { mutableStateOf<LocalDate?>(null) }
 
@@ -116,6 +116,16 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
         ) {
             item { Hero(today, vm) }
             item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("CALENDAR", style = MaterialTheme.typography.labelMedium)
+                    HistoryCalendar(history, ui.snapshot.date, weekStart, selectedDay, onDay = {
+                        selectedDay = it
+                        activityDay = it
+                    })
+                }
+            }
+            item { Text("STATISTICS", style = MaterialTheme.typography.labelMedium) }
+            item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     val unit = if (today.streak.unit == StreakUnit.WEEKS) "WK" else "D"
                     val fullUnit = if (today.streak.unit == StreakUnit.WEEKS) "weeks" else "days"
@@ -123,26 +133,11 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
                     Stat("BEST", "${today.streak.best}$unit", "${today.streak.best} $fullUnit")
                 }
             }
-            item { RecentChain(history, ui.snapshot.date, weekStart) }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SectionToggle("CALENDAR", calendarExpanded) { calendarExpanded = !calendarExpanded }
-                    if (calendarExpanded) {
-                        HistoryCalendar(history, ui.snapshot.date, weekStart, selectedDay, onDay = {
-                            selectedDay = it
-                            activityDay = it
-                        })
-                    }
-                }
-            }
-            item { SectionToggle("STATISTICS", statisticsExpanded) { statisticsExpanded = !statisticsExpanded } }
-            if (statisticsExpanded) {
-                item {
-                    val rate = HabitRules.completionRate(history.habit, ui.snapshot.date, weekStart, history.values)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        Stat("DAYS MET", DetailPresentation.closedDaysMet(history, ui.snapshot.date).toString())
-                        Stat("LAST 30D", rate?.let { "${(it * 100).toInt()}%" } ?: "--")
-                    }
+                val rate = HabitRules.completionRate(history.habit, ui.snapshot.date, weekStart, history.values)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Stat("DAYS MET", DetailPresentation.closedDaysMet(history, ui.snapshot.date).toString())
+                    Stat("LAST 30D", rate?.let { "${(it * 100).toInt()}%" } ?: "--")
                 }
             }
             item { Spacer(Modifier.height(32.dp)) }
@@ -175,14 +170,31 @@ fun DetailScreen(vm: MainViewModel, habitId: Long, onBack: () -> Unit, onEdit: (
 @Composable
 private fun Hero(t: HabitToday, vm: MainViewModel) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(150.dp)) {
+        Box(Modifier.size(170.dp)) {
             val tile = HabitTileState.from(t)
-            HabitTile(tile, Modifier.fillMaxSize().semantics { contentDescription = HabitLabels.accessibility(t) }) {
-                DotIcon(t.habit.icon, Modifier.size(60.dp), when {
-                    tile.solid -> Palette.Black
-                    tile.dimmed -> Palette.Dim
-                    else -> Palette.Text
-                })
+            val progress = DetailPresentation.heroProgress(t)
+            val foreground = when {
+                tile.solid -> Palette.Black
+                tile.dimmed -> Palette.Dim
+                else -> Palette.Text
+            }
+            HabitTile(tile, Modifier.fillMaxSize().clearAndSetSemantics {
+                contentDescription = "${HabitLabels.accessibility(t)}. ${progress.primary}. ${progress.label}"
+            }) {
+                Column(
+                    Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    DotIcon(t.habit.icon, Modifier.size(40.dp), foreground)
+                    DotText(progress.primary, dot = 3.dp, color = foreground)
+                    Text(
+                        progress.label,
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                        color = foreground,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             if (t.canControlTimer) {
                 PlayPauseButton(t.timerRunning, 48.dp, Modifier.align(Alignment.BottomEnd)) { vm.toggleTimer(t.habit.id) }
@@ -191,13 +203,8 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
         Spacer(Modifier.height(12.dp))
         if (t.habit.type == HabitType.TIMED) {
             val timer = DetailPresentation.timerContext(t)
-            Text(timer.primary, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(4.dp))
             Text(timer.secondary, style = MaterialTheme.typography.labelSmall, color = Palette.Muted, textAlign = TextAlign.Center)
         } else {
-            HabitLabels.detail(t).takeIf { it.isNotEmpty() }?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
-            }
             Text(DetailPresentation.schedule(t.habit), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
         }
     }
@@ -206,70 +213,14 @@ private fun Hero(t: HabitToday, vm: MainViewModel) {
 @Composable
 private fun Stat(label: String, value: String, spokenValue: String = value) {
     Column(Modifier.clearAndSetSemantics { contentDescription = "$label: $spokenValue" }, horizontalAlignment = Alignment.CenterHorizontally) {
-        DotText(value, dot = 3.dp)
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            fontFamily = FontFamily.Monospace,
+            color = Palette.Text,
+        )
         Spacer(Modifier.height(6.dp))
         Text(label, style = MaterialTheme.typography.labelSmall)
-    }
-}
-
-@Composable
-private fun SectionToggle(label: String, expanded: Boolean, onToggle: () -> Unit) {
-    TextButton(
-        onClick = onToggle,
-        modifier = Modifier.fillMaxWidth().semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" },
-    ) {
-        Text(label, Modifier.weight(1f), textAlign = TextAlign.Start, style = MaterialTheme.typography.labelMedium)
-        Text(if (expanded) "−" else "+")
-    }
-}
-
-@Composable
-private fun RecentChain(h: HabitHistory, today: LocalDate, weekStart: DayOfWeek) {
-    val points = DetailPresentation.recentChain(h, today, weekStart)
-    val highlight = LocalHighlight.current
-    val colors = LocalDotColors.current
-    Column(
-        Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(if (h.habit.schedule.isWeekly) "RECENT WEEKS" else "RECENT DAYS", style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
-        Box(Modifier.widthIn(max = 300.dp).fillMaxWidth()) {
-            Canvas(Modifier.fillMaxWidth().height(28.dp)) {
-                drawLine(colors.dim, Offset(size.width / 14, size.height / 2), Offset(size.width * 13 / 14, size.height / 2), 1.dp.toPx())
-            }
-            Row(Modifier.fillMaxWidth()) {
-                points.forEach { point ->
-                    val label = if (h.habit.schedule.isWeekly) point.start.format(DateTimeFormatter.ofPattern("d/M"))
-                        else point.start.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.ENGLISH)
-                    Column(
-                        Modifier.weight(1f).clearAndSetSemantics {
-                            contentDescription = (if (h.habit.schedule.isWeekly) "Week ${point.start} to ${point.end}" else point.start.format(dayFmt)) +
-                                ". ${point.stateLabel}" + if (point.current) ". Current period" else ""
-                        },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Canvas(Modifier.size(28.dp)) {
-                            drawCircle(colors.background, 9.dp.toPx())
-                            val radius = 6.dp.toPx()
-                            when {
-                                point.missingSteps -> drawCircle(colors.dim, radius, style = Stroke(1.dp.toPx()))
-                                point.status == DayStatus.MET -> drawCircle(highlight, radius)
-                                point.status == DayStatus.PARTIAL -> drawCircle(highlight, radius, style = Stroke(2.dp.toPx()))
-                                point.status == DayStatus.PENDING -> drawCircle(colors.text, radius, style = Stroke(1.dp.toPx()))
-                                point.status == DayStatus.MISSED -> drawCircle(colors.dim, radius, style = Stroke(1.5.dp.toPx()))
-                                point.status == DayStatus.REST -> drawCircle(colors.dim, 3.dp.toPx())
-                                else -> drawCircle(colors.dim, 2.dp.toPx())
-                            }
-                        }
-                        Text(label, style = MaterialTheme.typography.labelSmall, color = Palette.Muted)
-                        Box(Modifier.height(8.dp), contentAlignment = Alignment.Center) {
-                            if (point.current) Box(Modifier.size(3.dp).clip(CircleShape).background(Palette.Text))
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -278,6 +229,9 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
     var month by remember { mutableStateOf(YearMonth.from(today)) }
     val highlight = LocalHighlight.current
     val colors = LocalDotColors.current
+    val streak = remember(h, today, weekStart) { DetailPresentation.calendarStreak(h, today, weekStart) }
+    val streaks = remember(h, today, weekStart) { DetailPresentation.calendarStreaks(h, today, weekStart) }
+    val weekly = h.habit.schedule.isWeekly
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { month = month.minusMonths(1) }) { Text("‹") }
@@ -291,6 +245,7 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
         }
         val days = (0 until 7).map { weekStart.plus(it.toLong()) }
         Row(Modifier.fillMaxWidth()) {
+            if (weekly) Text("WK", Modifier.width(28.dp), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
             days.forEach {
                 Text(
                     it.getDisplayName(TextStyle.NARROW, Locale.ENGLISH),
@@ -304,56 +259,138 @@ private fun HistoryCalendar(h: HabitHistory, today: LocalDate, weekStart: DayOfW
         val lead = ((first.dayOfWeek.value - weekStart.value) + 7) % 7
         val cells = lead + month.lengthOfMonth()
         val rows = (cells + 6) / 7
-        for (r in 0 until rows) {
-            Row(Modifier.fillMaxWidth()) {
-                for (c in 0 until 7) {
-                    val idx = r * 7 + c - lead
-                    Box(Modifier.weight(1f).aspectRatio(1f), contentAlignment = Alignment.Center) {
-                        if (idx in 0 until month.lengthOfMonth()) {
-                            val date = month.atDay(idx + 1)
-                            val point = DetailPresentation.dayPoint(h, date, today)
-                            val status = point.status
-                            val clickable = !date.isAfter(today)
+        Box {
+            if (!weekly) {
+                Canvas(Modifier.fillMaxWidth().height((rows * 48).dp)) {
+                    val cellWidth = size.width / 7
+                    val cellHeight = size.height / rows
+                    val gridStart = first.minusDays(lead.toLong())
+                    for (index in 0 until rows * 7) {
+                        val date = gridStart.plusDays(index.toLong())
+                        val run = streaks.firstOrNull { it.dayLinks(date).let { links -> links.first || links.second } } ?: continue
+                        val (incoming, outgoing) = run.dayLinks(date)
+                        val linkColor = if (run.latest == streak.latest) highlight else colors.dim
+                        val row = index / 7
+                        val col = index % 7
+                        val origin = Offset((col + .5f) * cellWidth, (row + .5f) * cellHeight)
+                        if (index == 0 && incoming) {
+                            drawLine(linkColor, Offset(origin.x, 0f), origin, 2.dp.toPx())
+                        }
+                        if (outgoing) {
+                            if (col < 6) {
+                                drawLine(linkColor, origin, origin.copy(x = origin.x + cellWidth), 2.dp.toPx())
+                            } else if (row == rows - 1) {
+                                drawLine(linkColor, origin, origin.copy(y = size.height), 2.dp.toPx())
+                            } else {
+                                val inset = 2.dp.toPx()
+                                val boundary = (row + 1) * cellHeight
+                                val path = Path().apply {
+                                    moveTo(origin.x, origin.y)
+                                    lineTo(size.width - inset, origin.y)
+                                    lineTo(size.width - inset, boundary)
+                                    lineTo(inset, boundary)
+                                    lineTo(inset, origin.y + cellHeight)
+                                    lineTo(cellWidth / 2, origin.y + cellHeight)
+                                }
+                                drawPath(path, linkColor, style = Stroke(2.dp.toPx()))
+                            }
+                        }
+                    }
+                }
+            }
+            Column {
+                for (r in 0 until rows) {
+                    val rowStart = first.minusDays(lead.toLong()).plusDays(r * 7L)
+                    Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if (weekly) {
+                            val week = DetailPresentation.weekPoint(h, rowStart, today, weekStart)
+                            val active = streak.contains(rowStart)
+                            val run = streaks.firstOrNull { it.contains(rowStart) }
+                            val linkColor = if (active) highlight else colors.dim
                             Box(
-                                Modifier.size(42.dp).semantics {
-                                    contentDescription = "${date.format(dayFmt)}. ${point.stateLabel}" +
-                                        if (point.current) ". Today" else ""
-                                    stateDescription = if (date == selectedDay) "Selected" else "Not selected"
-                                }.let { if (clickable) it.clickable(onClickLabel = "Inspect date") { onDay(date) } else it },
+                                Modifier.width(28.dp).fillMaxHeight().semantics {
+                                    contentDescription = "Week ${week.start} to ${week.end}. ${week.stateLabel}" +
+                                        if (active) ". In current streak" else ""
+                                },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Canvas(Modifier.size(34.dp)) {
-                                    val selected = date == selectedDay
-                                    if (!point.missingSteps && (!selected || status == DayStatus.MET)) {
-                                        drawDayMark(status, highlight, colors)
+                                Canvas(Modifier.fillMaxSize()) {
+                                    if (run?.connects(rowStart.minusWeeks(1), rowStart) == true) {
+                                        drawLine(linkColor, Offset(center.x, 0f), center, 2.dp.toPx())
                                     }
-                                    if (selected) {
-                                        val inset = 0.5.dp.toPx()
-                                        drawRoundRect(
-                                            if (status == DayStatus.PARTIAL && !point.missingSteps) highlight else colors.text,
-                                            topLeft = Offset(inset, inset),
-                                            size = Size(size.width - 2 * inset, size.height - 2 * inset),
-                                            cornerRadius = CornerRadius(size.minDimension * TileGeometry.CORNER_FRACTION),
-                                            style = Stroke(1.dp.toPx()),
-                                        )
+                                    if (run?.connects(rowStart, rowStart.plusWeeks(1)) == true) {
+                                        drawLine(linkColor, center, Offset(center.x, size.height), 2.dp.toPx())
                                     }
-                                    if (point.current) drawCircle(
-                                        if (status == DayStatus.MET && !point.missingSteps) colors.background else colors.text,
-                                        1.5.dp.toPx(),
-                                        Offset(size.width / 2, size.height - 3.dp.toPx()),
-                                    )
+                                    if (active) drawCircle(highlight, 9.dp.toPx())
+                                    else if (run != null) drawCircle(colors.dim, 7.dp.toPx())
+                                    else drawCircle(colors.dim, 5.dp.toPx(), style = Stroke(1.dp.toPx()))
                                 }
-                                Text(
-                                    "${date.dayOfMonth}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = when {
-                                        point.missingSteps -> Palette.Muted
-                                        status == DayStatus.MET -> androidx.compose.ui.graphics.Color.Black
-                                        status in listOf(DayStatus.FUTURE, DayStatus.BEFORE_START, DayStatus.REST) -> Palette.Dim
-                                        else -> Palette.Text
-                                    },
-                                    modifier = Modifier.clearAndSetSemantics {},
-                                )
+                                if (streak.latest?.start == rowStart) {
+                                    DotIcon("flame", Modifier.size(16.dp), colors.background)
+                                }
+                            }
+                        }
+                        for (c in 0 until 7) {
+                            val idx = r * 7 + c - lead
+                            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                                if (idx in 0 until month.lengthOfMonth()) {
+                                    val date = month.atDay(idx + 1)
+                                    val point = DetailPresentation.dayPoint(h, date, today)
+                                    val status = point.status
+                                    val clickable = !date.isAfter(today)
+                                    Box(
+                                        Modifier.size(42.dp).semantics {
+                                            contentDescription = "${date.format(dayFmt)}. ${point.stateLabel}" +
+                                                (if (point.current) ". Today" else "") +
+                                                (if (!weekly && streak.contains(date)) ". In current streak" else "")
+                                            stateDescription = if (date == selectedDay) "Selected" else "Not selected"
+                                        }.let { if (clickable) it.clickable(onClickLabel = "Inspect date") { onDay(date) } else it },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Canvas(Modifier.size(34.dp)) {
+                                            drawRect(colors.background)
+                                            val selected = date == selectedDay
+                                            if (!point.missingSteps && (!selected || status == DayStatus.MET)) {
+                                                drawDayMark(status, highlight, colors)
+                                            }
+                                            if (selected) {
+                                                val inset = 0.5.dp.toPx()
+                                                drawRoundRect(
+                                                    if (status == DayStatus.PARTIAL && !point.missingSteps) highlight else colors.text,
+                                                    topLeft = Offset(inset, inset),
+                                                    size = Size(size.width - 2 * inset, size.height - 2 * inset),
+                                                    cornerRadius = CornerRadius(size.minDimension * TileGeometry.CORNER_FRACTION),
+                                                    style = Stroke(1.dp.toPx()),
+                                                )
+                                            }
+                                            if (point.current) drawCircle(
+                                                if (status == DayStatus.MET && !point.missingSteps) colors.background else colors.text,
+                                                1.5.dp.toPx(),
+                                                Offset(size.width / 2, size.height - 3.dp.toPx()),
+                                            )
+                                        }
+                                        Text(
+                                            "${date.dayOfMonth}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = when {
+                                                point.missingSteps -> Palette.Muted
+                                                status == DayStatus.MET -> Palette.Black
+                                                status in listOf(DayStatus.FUTURE, DayStatus.BEFORE_START, DayStatus.REST) -> Palette.Dim
+                                                else -> Palette.Text
+                                            },
+                                            modifier = Modifier.clearAndSetSemantics {},
+                                        )
+                                        if (!weekly && streak.latest?.start == date) {
+                                            Box(
+                                                Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-3).dp)
+                                                    .size(18.dp).clip(CircleShape).background(colors.background),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                DotIcon("flame", Modifier.size(14.dp), colors.text)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

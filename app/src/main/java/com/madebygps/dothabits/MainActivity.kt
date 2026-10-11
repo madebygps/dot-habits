@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -19,7 +18,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.madebygps.dothabits.data.AppSettings
 import com.madebygps.dothabits.ui.DetailScreen
 import com.madebygps.dothabits.ui.DotTheme
 import com.madebygps.dothabits.ui.EditHabitScreen
@@ -38,7 +36,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) navRequests.value = intent.habitExtra()
         setContent {
-            val settings by vm.settingsStore.settings.collectAsStateWithLifecycle(AppSettings())
             val nav = rememberNavController()
             LifecycleResumeEffect(Unit) {
                 vm.onResume()
@@ -49,7 +46,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(request) {
                 request?.let { nav.navigate("detail/$it") { launchSingleTop = true }; navRequests.value = null }
             }
-            DotTheme(highlight = Color(settings.highlight)) {
+            DotTheme {
                 NavHost(
                     nav,
                     startDestination = "home",

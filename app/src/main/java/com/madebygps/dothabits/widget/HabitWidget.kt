@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -99,13 +98,11 @@ open class HabitWidget(private val transparent: Boolean = false) : GlanceAppWidg
         try {
             val app = context.dotApp
             val initialData = app.repository.raw.first()
-            val initialSettings = app.settings.current()
             val density = context.resources.displayMetrics.density
             provideContent {
                 val data by app.repository.raw.collectAsState(initialData)
-                val settings by app.settings.settings.collectAsState(initialSettings)
                 val habitId = currentState<Preferences>()[HABIT_ID]
-                Content(app.repository.snapshot(data), habitId, density, Color(settings.highlight))
+                Content(app.repository.snapshot(data), habitId, density)
             }
         } finally {
             Log.i("DotHabitsWidget", "widget=habit id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
@@ -113,7 +110,7 @@ open class HabitWidget(private val transparent: Boolean = false) : GlanceAppWidg
     }
 
     @Composable
-    private fun Content(snapshot: TodaySnapshot, habitId: Long?, density: Float, highlight: Color) {
+    private fun Content(snapshot: TodaySnapshot, habitId: Long?, density: Float) {
         val size = LocalSize.current
         val layout = SingleLayout.forSize(size.width.value, size.height.value)
         val t = snapshot.habits.firstOrNull { it.habit.id == habitId }
@@ -138,12 +135,12 @@ open class HabitWidget(private val transparent: Boolean = false) : GlanceAppWidg
             val detail = HabitLabels.detail(t)
             val habitCaption = HabitLabels.caption(t).takeUnless { it == detail }.orEmpty()
             when (layout.presentation) {
-                SingleWidgetPresentation.COMPACT -> HabitRingImage(t, layout.ringDp.dp, px, highlight)
+                SingleWidgetPresentation.COMPACT -> HabitRingImage(t, layout.ringDp.dp, px)
                 SingleWidgetPresentation.WIDE -> Row(
                     modifier = GlanceModifier.fillMaxSize(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HabitRingImage(t, layout.ringDp.dp, px, highlight)
+                    HabitRingImage(t, layout.ringDp.dp, px)
                     Spacer(GlanceModifier.width(10.dp))
                     Column(
                         modifier = GlanceModifier.defaultWeight(),
@@ -159,7 +156,7 @@ open class HabitWidget(private val transparent: Boolean = false) : GlanceAppWidg
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    HabitRingImage(t, layout.ringDp.dp, px, highlight)
+                    HabitRingImage(t, layout.ringDp.dp, px)
                     Spacer(GlanceModifier.height(if (layout.presentation == SingleWidgetPresentation.LARGE) 10.dp else 6.dp))
                     HabitText(
                         detail,

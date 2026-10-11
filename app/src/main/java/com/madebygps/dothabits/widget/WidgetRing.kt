@@ -15,30 +15,30 @@ import com.madebygps.dothabits.domain.HabitLabels
 import com.madebygps.dothabits.domain.HabitToday
 
 internal object WidgetColors {
-    val background = dayNight(Color(0xFFF1F1F1), Color(0xFF181818))
-    val foreground = dayNight(Color.Black, Color(0xFFF2F2F2))
-    val track = dayNight(Color(0xFF9A9A96), Color(0xFF454545))
-    val dim = dayNight(Color(0xFF666663), Color(0xFF8A8A8A))
+    val background = dayNight(Color.White, Color.Black)
+    val foreground = dayNight(Color.Black, Color.White)
+    val track = dayNight(Color(0xFF9A9A9A), Color(0xFF454545))
+    val dim = dayNight(Color(0xFF666666), Color(0xFF8A8A8A))
 
     private fun dayNight(day: Color, night: Color): GlanceColorProvider = ColorProvider(day, night)
 
-    fun tone(tone: RingBitmaps.Tone, highlight: Color): GlanceColorProvider = when (tone) {
+    fun tone(tone: RingBitmaps.Tone): GlanceColorProvider = when (tone) {
         RingBitmaps.Tone.FOREGROUND -> foreground
-        RingBitmaps.Tone.HIGHLIGHT -> GlanceColorProvider(highlight)
+        RingBitmaps.Tone.HIGHLIGHT -> foreground
         RingBitmaps.Tone.DIM -> dim
         RingBitmaps.Tone.BACKGROUND -> background
     }
 }
 
 @Composable
-internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int, highlight: Color) {
+internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int) {
     val layers = RingBitmaps.layers(t, sizePx)
     Box(GlanceModifier.size(size)) {
         Image(
             ImageProvider(layers.fill),
             null,
             modifier = GlanceModifier.size(size),
-            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone, highlight)),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone)),
         )
         Image(
             ImageProvider(layers.track),
@@ -50,13 +50,13 @@ internal fun HabitRingImage(t: HabitToday, size: Dp, sizePx: Int, highlight: Col
             ImageProvider(layers.progress),
             null,
             modifier = GlanceModifier.size(size),
-            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone, highlight)),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.progressTone)),
         )
         Image(
             ImageProvider(layers.icon),
             HabitLabels.accessibility(t),
             modifier = GlanceModifier.size(size),
-            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.iconTone, highlight)),
+            colorFilter = ColorFilter.tint(WidgetColors.tone(layers.iconTone)),
         )
     }
 }

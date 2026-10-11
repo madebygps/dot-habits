@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -99,12 +98,10 @@ open class DotWidget(private val transparent: Boolean = false) : GlanceAppWidget
         try {
             val app = context.dotApp
             val initialData = app.repository.raw.first()
-            val initialSettings = app.settings.current()
             val density = context.resources.displayMetrics.density
             provideContent {
                 val data by app.repository.raw.collectAsState(initialData)
-                val settings by app.settings.settings.collectAsState(initialSettings)
-                Content(app.repository.snapshot(data), density, Color(settings.highlight))
+                Content(app.repository.snapshot(data), density)
             }
         } finally {
             Log.i("DotHabitsWidget", "widget=grid id=$id sessionMs=${SystemClock.elapsedRealtime() - started}")
@@ -112,7 +109,7 @@ open class DotWidget(private val transparent: Boolean = false) : GlanceAppWidget
     }
 
     @Composable
-    private fun Content(snapshot: TodaySnapshot, density: Float, highlight: Color) {
+    private fun Content(snapshot: TodaySnapshot, density: Float) {
         val size = LocalSize.current
         val grid = WidgetGrid.forSize(size.width.value, size.height.value)
         val habits = snapshot.habits.take(minOf(HABITS_PER_PAGE, grid.visibleHabits))
@@ -143,7 +140,7 @@ open class DotWidget(private val transparent: Boolean = false) : GlanceAppWidget
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (t != null) {
-                                    HabitRingImage(t, grid.ringDp.dp, px, highlight)
+                                    HabitRingImage(t, grid.ringDp.dp, px)
                                     if (grid.captions) {
                                         val text = HabitLabels.caption(t).ifEmpty { HabitLabels.detail(t) }
                                         if (text.isNotEmpty()) {

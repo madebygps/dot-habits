@@ -129,7 +129,7 @@ fun EditHabitScreen(vm: MainViewModel, habitId: Long, onDone: () -> Unit, onDele
 
             Section("TYPE")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(HabitType.COUNT to "Check / count", HabitType.TIMED to "Timer", HabitType.STEPS to "Steps").forEach { (type, label) ->
+                listOf(HabitType.COUNT to "Count", HabitType.TIMED to "Timer", HabitType.STEPS to "Steps").forEach { (type, label) ->
                     FilterChip(
                         selected = draft.type == type,
                         onClick = { draft = withType(draft, type) },

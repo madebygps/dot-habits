@@ -46,7 +46,7 @@ Habit statistics is read-only and always visible. CURRENT and BEST streaks appea
 
 Rates compare with the equally long period just before your selected range.
 
-Green ↑ means improved, red ↓ means declined, and a neutral dash means unchanged after rounding. No arrow means no comparison data. -- means no measured goals.
+Green ↑ means improved, red ↓ means declined, and a neutral dash means unchanged after rounding. -- means no data for this range. Comparison markers appear only when both date ranges have data; otherwise the percentage has no marker.
 
 Today, unfinished weeks, rest days and missing step goals are excluded. Detailed rules are in Settings > How Dot Habits works.
 

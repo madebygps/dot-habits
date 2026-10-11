@@ -14,7 +14,7 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Fan-out after any data change. The Glyph Toy and app UI observe Room flows directly;
- * widgets, alarms and the timer notification need an explicit push.
+ * widgets and alarms need an explicit push. Timer progress observes timer changes separately.
  */
 object Refresh {
     private const val TAG = "DotHabitsRefresh"
@@ -32,10 +32,6 @@ object Refresh {
             val phaseStarted = SystemClock.elapsedRealtime()
             val snapshot = app.repository.currentSnapshot()
             val snapshotMs = SystemClock.elapsedRealtime() - phaseStarted
-            phase = "notification"
-            val notificationStarted = SystemClock.elapsedRealtime()
-            TimerNotificationUpdater.refresh(app)
-            val notificationMs = SystemClock.elapsedRealtime() - notificationStarted
             phase = "alarms"
             val alarmsStarted = SystemClock.elapsedRealtime()
             Alarms.scheduleAll(app, snapshot)
@@ -53,7 +49,7 @@ object Refresh {
             Log.i(
                 TAG,
                 "reason=$reason totalMs=${SystemClock.elapsedRealtime() - started} snapshotMs=$snapshotMs " +
-                    "notificationMs=$notificationMs alarmsMs=$alarmsMs dotWidgetRequestMs=$dotWidgetMs " +
+                    "alarmsMs=$alarmsMs dotWidgetRequestMs=$dotWidgetMs " +
                     "habitWidgetRequestMs=$habitWidgetMs",
             )
         }.onFailure {

@@ -12,20 +12,45 @@ import androidx.core.content.ContextCompat
 import com.madebygps.dothabits.DotApp
 import com.madebygps.dothabits.domain.TimerDismissal
 import com.madebygps.dothabits.dotApp
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Prototype: keeps live progress out of the cached-process freezer, without keeping the CPU awake. */
+/** Owns minute-by-minute progress updates while a timer notification is visible. No wake lock. */
 class TimerProgressService : Service() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var updates: Job? = null
     private var promoted = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         instance = this
-        // Re-read under the updater lock: queued starts must not resurrect a paused or dismissed run.
-        dotApp.appScope.launch { TimerNotificationUpdater.refresh(dotApp) }
+        startPending = false
+        if (updates?.isActive != true) {
+            updates = scope.launch {
+                try {
+                    while (true) {
+                        // A queued start must check current data before displaying progress.
+                        TimerNotificationUpdater.refresh(dotApp, allowStart = false)
+                        if (instance !== this@TimerProgressService) break
+                        delay(60_000L)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "Timer progress updates failed", e)
+                    stopProgress()
+                    throw e
+                }
+            }
+        }
         return START_NOT_STICKY
     }
 
@@ -35,11 +60,20 @@ class TimerProgressService : Service() {
             this, Notifications.ID_TIMER, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
         )
         promoted = true
+        deniedRun = null
         Log.i(TAG, "Foreground progress started")
+    }
+
+    private fun stopProgress() {
+        if (instance === this) instance = null
+        updates?.cancel()
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        scope.cancel()
         Log.i(TAG, "Foreground progress stopped")
         super.onDestroy()
     }
@@ -47,47 +81,49 @@ class TimerProgressService : Service() {
     companion object {
         private const val TAG = "DotHabitsTimer"
         private var instance: TimerProgressService? = null
-        private var attemptedRun: TimerDismissal.Run? = null
+        private var startPending = false
+        private var deniedRun: TimerDismissal.Run? = null
 
+        /** Called under the notification updater's lock; service callbacks run on the main thread. */
         internal suspend fun reconcile(
             app: DotApp,
             run: TimerDismissal.Run?,
             notification: Notification?,
-            retryForegroundStart: Boolean,
-        ) =
-            withContext(Dispatchers.Main.immediate) {
-                if (notification == null || run == null) {
-                    attemptedRun = null
-                    instance?.let {
-                        instance = null
-                        ServiceCompat.stopForeground(it, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                        it.stopSelf()
-                    }
-                    app.stopService(Intent(app, TimerProgressService::class.java))
-                } else {
-                    try {
-                        val service = instance
-                        if (service != null) {
-                            service.promote(notification)
-                        } else if (attemptedRun != run || retryForegroundStart) {
-                            // Don't retry a denied background launch on every progress tick.
-                            attemptedRun = run
-                            ContextCompat.startForegroundService(app, Intent(app, TimerProgressService::class.java))
-                        }
-                    } catch (e: ForegroundServiceStartNotAllowedException) {
-                        Log.e(TAG, "Foreground progress denied for session=${run.sessionId} generation=${run.generation}; progress remains best effort", e)
-                        stopDeniedService()
-                    } catch (e: SecurityException) {
-                        Log.e(TAG, "Foreground progress permission denied; progress remains best effort", e)
-                        stopDeniedService()
-                    }
+            allowStart: Boolean,
+        ) = withContext(Dispatchers.Main.immediate) {
+            val exempt = LiveProgressBattery.isExempt(app)
+            var publishedNotification = notification.takeIf { exempt }
+            if (notification == null || run == null || !exempt) {
+                if (notification != null && run != null && !exempt) {
+                    Log.w(TAG, "Live progress requires battery-optimization exemption")
                 }
-                Notifications.publishTimer(app, notification)
+                startPending = false
+                deniedRun = null
+                instance?.stopProgress()
+                app.stopService(Intent(app, TimerProgressService::class.java))
+            } else {
+                try {
+                    val service = instance
+                    if (service != null) {
+                        service.promote(notification)
+                    } else if (allowStart && !startPending && deniedRun != run) {
+                        startPending = true
+                        ContextCompat.startForegroundService(app, Intent(app, TimerProgressService::class.java))
+                    }
+                } catch (e: ForegroundServiceStartNotAllowedException) {
+                    Log.e(TAG, "Foreground progress denied for run=$run; live progress disabled for this run", e)
+                    startPending = false
+                    deniedRun = run
+                    instance?.stopProgress()
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "Foreground progress permission denied; live progress disabled for this run", e)
+                    startPending = false
+                    deniedRun = run
+                    instance?.stopProgress()
+                }
+                if (deniedRun == run) publishedNotification = null
             }
-
-        private fun stopDeniedService() {
-            instance?.stopSelf()
-            instance = null
+            Notifications.publishTimer(app, publishedNotification)
         }
     }
 }

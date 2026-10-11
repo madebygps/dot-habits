@@ -46,9 +46,9 @@ class StatsTest {
             val week = java.time.temporal.ChronoUnit.WEEKS.between(start, it)
             week % 2 == 0L && it.dayOfWeek.value <= 4
         }
-        val stats = compute(HabitHistory(h, values), range = StatsRange.ALL)
-        assertEquals(13, stats.overall.total)
-        assertEquals(7, stats.overall.met)
+        val stats = compute(HabitHistory(h, values), range = StatsRange.D90)
+        assertEquals(12, stats.overall.total)
+        assertEquals(6, stats.overall.met)
     }
 
     @Test fun previousPeriodComparison() {
@@ -57,7 +57,29 @@ class StatsTest {
         val stats = compute(history)
         assertEquals(1f, stats.overall.rate!!, 0f)
         assertEquals(0f, stats.previous!!.rate!!, 0f)
-        assertNull(compute(history, range = StatsRange.ALL).previous)
+        assertEquals(100, stats.changePoints)
+    }
+
+    @Test fun percentageDistinguishesUnmeasuredFromZero() {
+        assertEquals("--", Tally().percentage)
+        assertEquals("0%", Tally(0, 10).percentage)
+        assertEquals("67%", Tally(2, 3).percentage)
+        assertEquals("100%", Tally(10, 10).percentage)
+    }
+
+    @Test fun comparisonUsesSignedRoundedPercentagePoints() {
+        val stats = compute(HabitHistory(habit(1), emptyMap()))
+        assertEquals(-11, stats.copy(overall = Tally(77, 100), previous = Tally(88, 100)).changePoints)
+        assertEquals(11, stats.copy(overall = Tally(88, 100), previous = Tally(77, 100)).changePoints)
+        assertEquals(0, stats.copy(overall = Tally(77, 100), previous = Tally(77, 100)).changePoints)
+        assertNull(stats.copy(overall = Tally(), previous = Tally(1, 1)).changePoints)
+        assertNull(stats.copy(overall = Tally(1, 1), previous = Tally()).changePoints)
+    }
+
+    @Test fun trendTitleMatchesBucketPeriods() {
+        val stats = compute()
+        assertEquals("WEEKLY COMPLETION", stats.copy(monthlyBuckets = false).trendTitle)
+        assertEquals("MONTHLY COMPLETION", stats.copy(monthlyBuckets = true).trendTitle)
     }
 
     @Test fun habitCountsFromCreationOrEarliestLog() {
@@ -80,16 +102,14 @@ class StatsTest {
         assertEquals(28, compute(HabitHistory(habit(1, negative = true), slips)).overall.met)
     }
 
-    @Test fun bucketsAreWeeklyUpTo26WeeksThenMonthly() {
+    @Test fun supportedRangesAreRecentAndBucketsAreWeekly() {
+        assertEquals(listOf(7, 30, 60, 90), StatsRange.entries.map { it.days })
         val h = habit(1, created = LocalDate.of(2025, 1, 1))
         val short = compute(HabitHistory(h, emptyMap()), range = StatsRange.D90)
         assertFalse(short.monthlyBuckets)
         assertTrue(short.buckets.size in 13..14)
         assertTrue(short.buckets.all { it.start.dayOfWeek == MONDAY })
-        val all = compute(HabitHistory(h, emptyMap()), range = StatsRange.ALL)
-        assertTrue(all.monthlyBuckets)
-        assertTrue(all.buckets.all { it.start.dayOfMonth == 1 })
-        assertEquals(all.overall.total, all.buckets.sumOf { it.tally.total })
+        assertEquals(short.overall.total, short.buckets.sumOf { it.tally.total })
     }
 
     @Test fun weekStartIsRespected() {
@@ -123,15 +143,83 @@ class StatsTest {
         val history = HabitHistory(habit(1, created = today.minusDays(200)), everyDay(today.minusDays(30), today))
         StatsRange.entries.forEach { range ->
             val stats = compute(history, range = range)
-            val expectedDays = range.days ?: 200
+            val expectedDays = range.days
             assertEquals(today.minusDays(expectedDays.toLong()), stats.from)
-            assertEquals(Tally(30, expectedDays), stats.overall)
+            assertEquals(Tally(minOf(30, expectedDays), expectedDays), stats.overall)
             assertEquals(stats.overall, stats.buckets.fold(Tally()) { tally, bucket -> tally + bucket.tally })
-            if (range == StatsRange.ALL) {
-                assertNull(stats.previous)
-            } else {
-                assertEquals(Tally(0, expectedDays), stats.previous)
-            }
+            assertEquals(Tally(if (range == StatsRange.D7) 7 else 0, expectedDays), stats.previous)
+            assertEquals(stats.from.minusDays(expectedDays.toLong()), stats.previousFrom)
+            assertEquals(stats.from.minusDays(1), stats.previousTo)
         }
+    }
+
+    @Test fun perHabitTalliesPreserveOverallTotalsAndComparisons() {
+        val histories = arrayOf(
+            HabitHistory(habit(1), everyDay(today.minusDays(30), today.minusDays(1))),
+            HabitHistory(habit(2), everyDay(today.minusDays(60), today.minusDays(31))),
+            HabitHistory(habit(3, Schedule.daysPerWeek(3)), emptyMap()),
+        )
+        StatsRange.entries.forEach { range ->
+            val stats = compute(*histories, range = range)
+            assertEquals(stats.overall, stats.habits.fold(Tally()) { tally, habit -> tally + habit.current })
+            assertEquals(stats.previous, stats.habits.fold(Tally()) { tally, habit -> tally + habit.previous!! })
+            assertEquals(stats.overall.missed, stats.missedGoals.sumOf { it.current.missed })
+        }
+        val stats = compute(*histories)
+        assertEquals(listOf(1L), stats.improving.map { it.habit.id })
+        assertEquals(listOf(2L), stats.declining.map { it.habit.id })
+    }
+
+    @Test fun changesExcludeMissingPeriodsAndRankTopThreeInEachDirection() {
+        val stats = compute().copy(habits = listOf(
+            HabitStats(habit(1), Tally(9, 10), Tally(1, 10)),
+            HabitStats(habit(2), Tally(7, 10), Tally(1, 10)),
+            HabitStats(habit(3), Tally(5, 10), Tally(1, 10)),
+            HabitStats(habit(4), Tally(3, 10), Tally(1, 10)),
+            HabitStats(habit(5), Tally(1, 10), Tally(9, 10)),
+            HabitStats(habit(6), Tally(1, 10), Tally(7, 10)),
+            HabitStats(habit(7), Tally(1, 10), Tally(5, 10)),
+            HabitStats(habit(8), Tally(1, 10), Tally(3, 10)),
+            HabitStats(habit(9), Tally(10, 10), Tally()),
+            HabitStats(habit(10), Tally(), Tally(10, 10)),
+            HabitStats(habit(11), Tally(1, 10), Tally(1, 10)),
+            HabitStats(habit(12), Tally(100, 100), Tally(100, 100)),
+            HabitStats(habit(13), Tally(500, 1000), Tally(499, 1000)),
+        ))
+        assertEquals(listOf(1L, 2L, 3L), stats.improving.map { it.habit.id })
+        assertEquals(listOf(5L, 6L, 7L), stats.declining.map { it.habit.id })
+        assertTrue((stats.improving + stats.declining).none { it.habit.id in 9L..13L })
+    }
+
+    @Test fun weekdaysExcludeWeeklyGoalsRestDaysAndUnknownSteps() {
+        val monday = habit(1, Schedule.weekdays(MONDAY))
+        val steps = habit(2).copy(type = HabitType.STEPS, dailyTarget = 100)
+        val weekly = habit(3, Schedule.daysPerWeek(1))
+        val stats = Stats.compute(listOf(
+            HabitHistory(monday, everyDay(start, today)),
+            HabitHistory(steps, mapOf(today.minusDays(1) to 100L, today.minusDays(2) to 0L)),
+            HabitHistory(weekly, everyDay(start, today)),
+        ), today, DayOfWeek.SUNDAY, StatsRange.D30)
+        assertEquals(DayOfWeek.SUNDAY, stats.weekdays.first().day)
+        assertEquals(Tally(4, 4), stats.weekdays.single { it.day == MONDAY }.tally)
+        assertEquals(Tally(1, 1), stats.weekdays.single { it.day == DayOfWeek.SUNDAY }.tally)
+        assertEquals(Tally(0, 1), stats.weekdays.single { it.day == DayOfWeek.SATURDAY }.tally)
+        assertEquals(Tally(), stats.weekdays.single { it.day == TUESDAY }.tally)
+        assertEquals(Tally(5, 6), stats.weekdays.fold(Tally()) { tally, day -> tally + day.tally })
+    }
+
+    @Test fun missesExcludeUnknownStepGoalsAndIncludeAvoidAndWeeklyGoals() {
+        val avoid = habit(1, negative = true)
+        val steps = habit(2).copy(type = HabitType.STEPS, dailyTarget = 100)
+        val weekly = habit(3, Schedule.daysPerWeek(1))
+        val stats = compute(
+            HabitHistory(avoid, mapOf(today.minusDays(1) to 1L)),
+            HabitHistory(steps, emptyMap()),
+            HabitHistory(weekly, emptyMap()),
+        )
+        assertEquals(30, stats.missingStepGoals)
+        assertEquals(listOf(3L, 1L), stats.missedGoals.map { it.habit.id })
+        assertEquals(1, stats.missedGoals.single { it.habit.id == 1L }.current.missed)
+        assertEquals(stats.overall.missed, stats.missedGoals.sumOf { it.current.missed })
     }
 }

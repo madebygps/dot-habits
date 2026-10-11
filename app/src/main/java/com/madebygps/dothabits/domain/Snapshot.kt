@@ -88,6 +88,7 @@ data class TodaySnapshot(val date: LocalDate, val habits: List<HabitToday>, val 
     val dueCount: Int get() = habits.count { it.countsTowardToday }
     val doneCount: Int get() = habits.count { it.countsTowardToday && it.isComplete }
     val overallFraction: Float get() = if (dueCount == 0) 0f else doneCount.toFloat() / dueCount
+    val allHabitsOnStreak: Boolean get() = habits.isNotEmpty() && habits.all { it.streak.current > 0 }
 
     companion object {
         val Empty = TodaySnapshot(LocalDate.MIN, emptyList(), null)

@@ -249,7 +249,7 @@ private fun HabitCell(
     val iconColor = when {
         tile.solid -> Palette.Black
         tile.dimmed -> Palette.Dim
-        else -> Palette.Text
+        else -> highlight
     }
     val caption = HabitLabels.caption(t)
 
@@ -293,10 +293,10 @@ private fun HabitCell(
                 Box(
                     Modifier.align(Alignment.Center).offset(y = ring * 0.30f)
                         .size(22.dp).clip(CircleShape)
-                        .background(if (tile.solid) Palette.Text else Palette.Black),
+                        .background(if (tile.solid) highlight else Palette.Black),
                     contentAlignment = Alignment.Center,
                 ) {
-                    DotIcon("flame", Modifier.size(16.dp), if (tile.solid) Palette.Black else Palette.Text)
+                    DotIcon("flame", Modifier.size(16.dp), if (tile.solid) Palette.Black else highlight)
                 }
             }
             if (t.canControlTimer) {
@@ -403,7 +403,7 @@ private fun BottomBar(pages: Int, current: Int, onPage: (Int) -> Unit, onStats: 
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BarButton("stats", "Statistics", onStats)
+        BarButton("stats", "Insights", onStats)
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             repeat(pages) { i ->

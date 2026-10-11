@@ -19,7 +19,7 @@ import java.time.LocalDate
 
 /**
  * The only expiry observer. Sleeps to the next deadline while the process lives; persisted
- * OS alarms cover process death. No heartbeat writes, polling alarms, service or wake lock.
+ * OS alarms cover process death. No heartbeat writes, polling alarms or wake lock.
  */
 object TimerLifecycle {
     private val wake = MutableStateFlow(0L)

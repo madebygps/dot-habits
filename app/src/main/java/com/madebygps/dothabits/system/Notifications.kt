@@ -1,6 +1,7 @@
 package com.madebygps.dothabits.system
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -22,7 +23,7 @@ object Notifications {
     const val CH_TIMER = "timer"
     const val CH_REVIEW = "timer_review"
     const val CH_SESSION_DONE = "timer_session_done"
-    private const val ID_TIMER = 1
+    internal const val ID_TIMER = 1
     private const val ID_REVIEW = 2
     private const val ID_GOAL = 3
     private const val REMINDER_BASE = 1000
@@ -76,9 +77,7 @@ object Notifications {
     }
 
     /** The system owns the countdown; progress refreshes opportunistically without waking the phone. */
-    @Suppress("MissingPermission")
-    fun updateTimer(context: Context, snapshot: TodaySnapshot) {
-        val nm = NotificationManagerCompat.from(context)
+    fun timerNotification(context: Context, snapshot: TodaySnapshot): Notification? {
         val running = snapshot.habits.firstOrNull { it.timerRunning }
         val runId = running?.timerSessionId
         val generation = running?.timerGeneration
@@ -86,8 +85,11 @@ object Notifications {
             storedDismissal(context),
             if (runId != null && generation != null) TimerDismissal.Run(runId, generation) else null,
         )
-        if (running == null || runId == null || dismissed || !canPost(context)) {
-            nm.cancel(ID_TIMER)
+        val notificationsEnabled = canPost(context) && NotificationManagerCompat.from(context).areNotificationsEnabled()
+        val channelBlocked = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(CH_TIMER)?.importance == NotificationManager.IMPORTANCE_NONE
+        if (running == null || runId == null || dismissed || !notificationsEnabled || channelBlocked) {
+            return null
         } else {
             val nowMs = System.currentTimeMillis()
             val endMs = requireNotNull(running.timerEndsAt?.toEpochMilli())
@@ -139,10 +141,14 @@ object Notifications {
                 .setDeleteIntent(dismiss)
                 .addAction(0, context.getString(R.string.pause), pause)
                 .build()
-            nm.notify(ID_TIMER, n)
+            return n
         }
+    }
 
-        // Remove a recovery notification left by an older app version.
+    @Suppress("MissingPermission")
+    fun publishTimer(context: Context, notification: Notification?) {
+        val nm = NotificationManagerCompat.from(context)
+        if (notification == null) nm.cancel(ID_TIMER) else nm.notify(ID_TIMER, notification)
         nm.cancel(ID_REVIEW)
     }
 

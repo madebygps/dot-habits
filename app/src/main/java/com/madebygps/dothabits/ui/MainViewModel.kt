@@ -43,6 +43,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onResume() = viewModelScope.launch {
         com.madebygps.dothabits.system.TimerLifecycle.settle(dot)
+        com.madebygps.dothabits.system.TimerNotificationUpdater.refresh(dot, retryForegroundStart = true)
         refreshSteps()
     }
 

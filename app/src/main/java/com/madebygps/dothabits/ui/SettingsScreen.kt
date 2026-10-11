@@ -36,10 +36,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +59,8 @@ import com.madebygps.dothabits.R
 import com.madebygps.dothabits.dotApp
 import com.madebygps.dothabits.glyph.GlyphSupport
 import com.madebygps.dothabits.domain.HabitGuide
+import com.madebygps.dothabits.domain.LiveProgressSetup
+import com.madebygps.dothabits.system.LiveProgressBattery
 import com.madebygps.dothabits.system.Alarms
 import com.madebygps.dothabits.system.Notifications
 import com.madebygps.dothabits.system.Refresh
@@ -76,6 +80,9 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
     val steps by vm.steps.collectAsStateWithLifecycle()
     var showToyHelp by remember { mutableStateOf(false) }
     var showHabitPicker by remember { mutableStateOf(false) }
+    var showBatteryHelp by rememberSaveable { mutableStateOf(false) }
+    var progressSetupRequested by rememberSaveable { mutableStateOf(false) }
+    var batteryExempt by remember { mutableStateOf(LiveProgressBattery.isExempt(context)) }
     val habits = ui.raw?.habits.orEmpty().sortedBy { it.position }
     val glyphHabit = ui.snapshot.glyphHabit(settings.glyphHabitId)
 
@@ -90,8 +97,19 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
         canPromote = context.getSystemService(NotificationManager::class.java).canPostPromotedNotifications()
         canExact = Alarms.canExact(context)
         toysManager = GlyphSupport.canOpenToysManager(context)
+        batteryExempt = LiveProgressBattery.isExempt(context)
         vm.refreshSteps()
         onPauseOrDispose { }
+    }
+
+    LaunchedEffect(progressSetupRequested, canNotify, canPromote, batteryExempt, settings.liveProgressBatteryPromptShown) {
+        if (LiveProgressSetup.shouldExplainBattery(
+                progressSetupRequested, canNotify, canPromote, batteryExempt, settings.liveProgressBatteryPromptShown,
+            )) {
+            app.settings.markLiveProgressBatteryPromptShown()
+            showBatteryHelp = true
+            progressSetupRequested = false
+        }
     }
 
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -184,15 +202,21 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
                 ),
                 "MANAGE",
             ) {
+                progressSetupRequested = true
                 context.startActivity(
                     Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
                 )
             }
             Text(
-                HabitGuide.glyphProgressSetup,
+                HabitGuide.glyphProgressSettingsHint,
                 style = MaterialTheme.typography.bodySmall,
                 color = Palette.Muted,
             )
+            PermRow(
+                stringResource(R.string.live_progress_battery_title),
+                stringResource(if (batteryExempt) R.string.live_progress_battery_exempt else R.string.live_progress_battery_optimized),
+                stringResource(R.string.open_battery_settings),
+            ) { LiveProgressBattery.openSettings(context) }
 
             Divider()
             Header("REMINDERS")
@@ -238,6 +262,22 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
         }
     }
 
+    if (showBatteryHelp) {
+        AlertDialog(
+            onDismissRequest = { showBatteryHelp = false },
+            title = { Text(stringResource(R.string.live_progress_battery_title)) },
+            text = { Text(HabitGuide.liveProgressBatteryPrompt) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBatteryHelp = false
+                    LiveProgressBattery.openSettings(context)
+                }) { Text(stringResource(R.string.open_battery_settings)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatteryHelp = false }) { Text(stringResource(R.string.not_now)) }
+            },
+        )
+    }
     if (showToyHelp) {
         GuideHelpDialog(listOf(HabitGuide.toyHelp), onDismiss = { showToyHelp = false }, onGuide = onGuide)
     }

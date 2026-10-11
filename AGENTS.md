@@ -26,8 +26,10 @@ Include both changes so the app and published guide stay consistent:
   may run API 36.0, below the platform promotion API's 36.1 requirement.
 - No internet permission, backend, accounts, analytics, ads or fabricated history/step data.
   Filter Health Connect steps to origin `android` plus the device's synthetic package name.
-- No foreground service, wake lock or polling alarms. Steps refresh every 15 minutes in the
-  background and every minute while resumed; live timer progress at most every 15 seconds.
+- The live-progress prototype permits a `specialUse` foreground service only for a visible
+  running timer notification. Stop on pause, completion, discard or notification dismissal.
+  No wake lock or polling alarms. Steps refresh every 15 minutes in the background and every
+  minute while resumed; live timer progress at most every 15 seconds, best effort during sleep.
   Alarms are only for reminders, midnight and session end. Use `setWindow` without optional
   `SCHEDULE_EXACT_ALARM` permission; never request `USE_EXACT_ALARM`.
 - AGP uses built-in Kotlin; do not add `kotlin-android`. Keep the bundled Glyph SDK and its EULA

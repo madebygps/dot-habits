@@ -123,8 +123,8 @@ object Notifications {
                 .setContentText(text)
                 .setStyle(
                     NotificationCompat.ProgressStyle()
-                        .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(TimerProgress.MAX)))
-                        .setProgress(progress.elapsed),
+                        .setProgressSegments(listOf(NotificationCompat.ProgressStyle.Segment(progress.totalSeconds)))
+                        .setProgress(progress.elapsedSeconds),
                 )
                 .setRequestPromotedOngoing(true)
                 .setUsesChronometer(true)

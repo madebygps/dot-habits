@@ -12,7 +12,7 @@ import kotlin.math.sqrt
 /**
  * Pure renderer producing 25×25 monochrome grey levels (0..255, row-major) for the
  * Phone (3) Glyph Matrix. Kept free of Android/SDK types so it is unit-tested on the JVM.
- * The Glyph is always monochrome regardless of the app highlight colour.
+ * The Glyph is always monochrome.
  *
  * The toy is a timer: it shows [TodaySnapshot.activeTimer] (the running timer, otherwise the
  * first timed habit due today that isn't done), one ring segment per session, and an m:ss

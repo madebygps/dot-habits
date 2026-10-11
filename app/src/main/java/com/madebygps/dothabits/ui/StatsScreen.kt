@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -132,7 +133,8 @@ private fun RangePicker(selected: StatsRange, onPick: (StatsRange) -> Unit) {
             ) {
                 Text(range.label, Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center, color = if (on) Color.Black else Palette.Text)
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = TextAlign.Center, color = if (on) Palette.Black else Palette.Text)
             }
         }
     }
@@ -145,27 +147,25 @@ private fun Overview(stats: RangeStats, range: StatsRange) {
         Spacer(Modifier.height(12.dp))
         Text(
             pct(stats.overall), fontSize = 64.sp, fontWeight = FontWeight.Light,
-            fontFamily = MaterialTheme.typography.labelLarge.fontFamily,
+            fontFamily = FontFamily.Monospace,
         )
         Spacer(Modifier.height(12.dp))
         Text(
             "${stats.overall.met} of ${stats.overall.total} goals met",
             style = MaterialTheme.typography.titleMedium, color = Palette.Text,
+            fontFamily = FontFamily.Monospace,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             "${stats.from.format(shortDate)} – ${stats.to.format(shortDate)}",
             style = MaterialTheme.typography.bodyMedium, color = Palette.Text,
+            fontFamily = FontFamily.Monospace,
         )
         val previous = stats.previous?.rate
         val current = stats.overall.rate
         if (previous != null && current != null) {
             val delta = ((current - previous) * 100).roundToInt()
-            val changeColor = when {
-                delta > 0 -> Color(0xFF75D99A)
-                delta < 0 -> Color(0xFFFF8585)
-                else -> Palette.Text
-            }
+            val changeColor = Palette.Text
             Spacer(Modifier.height(24.dp))
             Box(
                 Modifier.background(
@@ -181,6 +181,7 @@ private fun Overview(stats: RangeStats, range: StatsRange) {
                         contentDescription = "$delta percentage points compared with the previous ${range.label.lowercase()}"
                     },
                     style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
                     color = changeColor,
                 )
             }
@@ -191,7 +192,8 @@ private fun Overview(stats: RangeStats, range: StatsRange) {
         }
         if (stats.missingStepGoals > 0) {
             Spacer(Modifier.height(12.dp))
-            Text("NO STEP DATA · ${stats.missingStepGoals} goals excluded", style = MaterialTheme.typography.bodyMedium, color = Palette.Text)
+            Text("NO STEP DATA · ${stats.missingStepGoals} goals excluded", style = MaterialTheme.typography.bodyMedium,
+                fontFamily = FontFamily.Monospace, color = Palette.Text)
         }
     }
 }
@@ -225,14 +227,17 @@ private fun TrendChart(buckets: List<StatsBucket>, monthly: Boolean, height: Dp)
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth()) {
             val format = if (monthly) DateTimeFormatter.ofPattern("MMM yy") else shortDate
-            Text(buckets.firstOrNull()?.start?.format(format).orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Palette.Text)
+            Text(buckets.firstOrNull()?.start?.format(format).orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                fontFamily = FontFamily.Monospace, color = Palette.Text)
             Text(
                 if (monthly) "PER MONTH" else "PER WEEK", Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium, color = Palette.Text, textAlign = TextAlign.Center,
+                fontFamily = FontFamily.Monospace,
             )
             Text(
                 buckets.lastOrNull()?.start?.format(format).orEmpty(), Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium, color = Palette.Text, textAlign = TextAlign.End,
+                fontFamily = FontFamily.Monospace,
             )
         }
     }

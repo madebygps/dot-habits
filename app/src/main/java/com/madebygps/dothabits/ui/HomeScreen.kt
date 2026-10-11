@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -166,6 +167,7 @@ private fun Header(date: java.time.LocalDate, done: Int, due: Int, onAbout: () -
                 painter = painterResource(R.drawable.ic_launcher_foreground),
                 contentDescription = "About Dot Habits",
                 modifier = Modifier.size(48.dp),
+                colorFilter = ColorFilter.tint(Palette.Text),
             )
         }
         Box(Modifier.align(Alignment.CenterEnd)) {
@@ -290,9 +292,12 @@ private fun HabitCell(
             if (HabitLabels.hasStreakMarker(t)) {
                 Box(
                     Modifier.align(Alignment.Center).offset(y = ring * 0.30f)
-                        .size(5.dp).clip(CircleShape)
-                        .background(if (tile.solid) Color.Black else if (tile.dimmed) Palette.Dim else Palette.Muted),
-                )
+                        .size(22.dp).clip(CircleShape)
+                        .background(if (tile.solid) Palette.Text else Palette.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DotIcon("flame", Modifier.size(16.dp), if (tile.solid) Palette.Black else Palette.Text)
+                }
             }
             if (t.canControlTimer) {
                 PlayPauseButton(
@@ -342,6 +347,7 @@ private fun CellLabels(name: String, caption: String, ring: Dp, captionColor: Co
 @Composable
 fun PlayPauseButton(running: Boolean, size: Dp, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val highlight = LocalHighlight.current
+    val background = Palette.Black
     Box(
         modifier
             .size(size)
@@ -353,7 +359,7 @@ fun PlayPauseButton(running: Boolean, size: Dp, modifier: Modifier = Modifier, o
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(size * 0.38f)) {
-            val c = if (running) Color.Black else highlight
+            val c = if (running) background else highlight
             if (running) {
                 val w = this.size.width * 0.32f
                 drawRect(c, topLeft = Offset(0f, 0f), size = androidx.compose.ui.geometry.Size(w, this.size.height))

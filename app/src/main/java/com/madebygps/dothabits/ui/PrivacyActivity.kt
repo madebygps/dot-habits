@@ -15,9 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.madebygps.dothabits.data.HighlightPalette
 import com.madebygps.dothabits.domain.HabitGuide
 
 /**
@@ -28,7 +26,7 @@ class PrivacyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            DotTheme(Color(HighlightPalette.first().argb)) {
+            DotTheme {
                 Column(
                     Modifier
                         .fillMaxSize()

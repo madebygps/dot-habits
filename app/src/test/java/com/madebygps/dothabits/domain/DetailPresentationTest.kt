@@ -18,6 +18,144 @@ class DetailPresentationTest {
     private fun snapshot(h: Habit = timed, value: Long = 0, runs: List<TimerSession> = emptyList()): HabitToday =
         SnapshotBuilder.habitToday(HabitHistory(h, mapOf(today to value), runs), today, DayOfWeek.MONDAY, now)
 
+    @Test fun pastDailyRunsRemainSeparateAcrossMissedAndPartialDays() {
+        val history = HabitHistory(count, mapOf(
+            today.minusDays(6) to 2L, today.minusDays(5) to 2L,
+            today.minusDays(4) to 1L, today.minusDays(2) to 2L, today.minusDays(1) to 2L,
+        ))
+        val runs = DetailPresentation.calendarStreaks(history, today, DayOfWeek.MONDAY)
+        assertEquals(listOf(2, 2), runs.map { it.periods.size })
+        assertTrue(runs.none { it.dayLinks(today.minusDays(4)).let { links -> links.first || links.second } })
+        assertEquals(DetailPresentation.calendarStreak(history, today, DayOfWeek.MONDAY), runs.last())
+        val broken = history.copy(values = history.values + (today to 1L))
+        assertEquals(runs, DetailPresentation.calendarStreaks(broken, today, DayOfWeek.MONDAY))
+    }
+
+    @Test fun pastWeeklyRunsBreakOnFailedClosedWeeksForEitherWeekStart() {
+        for (firstDay in listOf(DayOfWeek.MONDAY, DayOfWeek.SUNDAY)) {
+            val start = HabitRules.weekStart(today, firstDay)
+            val habit = count.copy(schedule = Schedule.timesPerWeek(3), createdOn = start.minusWeeks(6))
+            val history = HabitHistory(habit, mapOf(
+                start.minusWeeks(5) to 3L, start.minusWeeks(4) to 3L,
+                start.minusWeeks(2) to 3L, start.minusWeeks(1) to 3L,
+            ))
+            val runs = DetailPresentation.calendarStreaks(history, today, firstDay)
+            assertEquals(listOf(2, 2), runs.map { it.periods.size })
+            assertTrue(runs.none { it.connects(start.minusWeeks(4), start.minusWeeks(2)) })
+            assertEquals(DetailPresentation.calendarStreak(history, today, firstDay), runs.last())
+        }
+    }
+
+    @Test fun pastRunsBridgeRestDaysAndRemainAfterCurrentAvoidStreakBreaks() {
+        val habit = count.copy(schedule = Schedule.weekdays(DayOfWeek.MONDAY, DayOfWeek.FRIDAY))
+        val history = HabitHistory(habit, mapOf(today.minusDays(5) to 2L, today.minusDays(1) to 2L))
+        val runs = DetailPresentation.calendarStreaks(history, today, DayOfWeek.MONDAY)
+        assertEquals(true to true, runs.single().dayLinks(today.minusDays(3)))
+        val avoid = count.copy(isNegative = true, dailyTarget = 0, createdOn = today.minusDays(3))
+        val slipped = HabitHistory(avoid, mapOf(today to 1L))
+        assertEquals(3, DetailPresentation.calendarStreaks(slipped, today, DayOfWeek.MONDAY).single().periods.size)
+        assertEquals(null, DetailPresentation.calendarStreak(slipped, today, DayOfWeek.MONDAY).latest)
+    }
+
+    @Test fun heroProgressShowsCountsSlipsAndWeeklyTotalsWithoutDuplicateDetails() {
+        assertEquals(HeroProgress("1/2", "TODAY"), DetailPresentation.heroProgress(snapshot(count, 1)))
+        assertEquals(HeroProgress("0/1", "SLIPS"), DetailPresentation.heroProgress(snapshot(count.copy(isNegative = true, dailyTarget = 1))))
+        val weekly = count.copy(schedule = Schedule.timesPerWeek(3))
+        assertEquals(HeroProgress("2/3", "THIS WEEK"), DetailPresentation.heroProgress(snapshot(weekly, 2)))
+        val rest = count.copy(schedule = Schedule.weekdays(DayOfWeek.MONDAY))
+        assertEquals(HeroProgress("0/2", "REST DAY"), DetailPresentation.heroProgress(snapshot(rest)))
+    }
+
+    @Test fun heroTimerShowsCountdownAndCompletedSessionsInsideTile() {
+        assertEquals(HeroProgress("25:00", "LEFT · 0/2"), DetailPresentation.heroProgress(snapshot()))
+        assertEquals(HeroProgress("2/2", "SESSIONS"), DetailPresentation.heroProgress(snapshot(value = 50 * 60)))
+        val paused = TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1500,
+            remainingMs = 872_000, epochDay = today.toEpochDay())
+        assertEquals(HeroProgress("14:32", "PAUSED · 1/2"),
+            DetailPresentation.heroProgress(snapshot(value = 25 * 60, runs = listOf(paused))))
+    }
+
+    @Test fun heroStepsDistinguishMissingDataFromMeasuredZero() {
+        val steps = count.copy(type = HabitType.STEPS)
+        assertEquals(HeroProgress("0", "STEPS"), DetailPresentation.heroProgress(snapshot(steps)))
+        val missing = snapshot(steps).copy(hasData = false)
+        assertEquals(HeroProgress("--", "NO STEP DATA"), DetailPresentation.heroProgress(missing))
+    }
+
+    @Test fun calendarFlameMarksLastSuccessfulPeriodNotPendingToday() {
+        val streak = DetailPresentation.calendarStreak(
+            HabitHistory(count, mapOf(today.minusDays(1) to 2L)), today, DayOfWeek.MONDAY,
+        )
+        assertEquals(today.minusDays(1), streak.latest?.start)
+        assertEquals(null, DetailPresentation.calendarStreak(HabitHistory(count, emptyMap()), today, DayOfWeek.MONDAY).latest)
+    }
+
+    @Test fun calendarLinksOnlyCurrentRunAndLeavesUnmetTodayPending() {
+        val values = mapOf(today.minusDays(5) to 2L, today.minusDays(3) to 2L, today.minusDays(2) to 2L, today.minusDays(1) to 2L)
+        val streak = DetailPresentation.calendarStreak(HabitHistory(count, values), today, DayOfWeek.MONDAY)
+        assertEquals((3 downTo 1).map { today.minusDays(it.toLong()) }, streak.periods.map { it.start })
+        assertFalse(streak.contains(today))
+        assertEquals(false to true, streak.dayLinks(today.minusDays(3)))
+        assertEquals(true to true, streak.dayLinks(today.minusDays(2)))
+        assertEquals(true to false, streak.dayLinks(today.minusDays(1)))
+        assertEquals(false to false, streak.dayLinks(today))
+        assertFalse(streak.contains(today.minusDays(5)))
+    }
+
+    @Test fun calendarBridgesRestDaysWithoutCountingOffScheduleCompletions() {
+        val habit = count.copy(schedule = Schedule.weekdays(DayOfWeek.MONDAY, DayOfWeek.FRIDAY))
+        val monday = today.minusDays(5)
+        val friday = today.minusDays(1)
+        val streak = DetailPresentation.calendarStreak(
+            HabitHistory(habit, mapOf(monday to 2L, monday.plusDays(1) to 2L, friday to 2L)), today, DayOfWeek.MONDAY,
+        )
+        assertEquals(listOf(monday, friday), streak.periods.map { it.start })
+        assertEquals(true to true, streak.dayLinks(monday.plusDays(2)))
+        assertFalse(streak.contains(monday.plusDays(1)))
+        assertEquals(false to false, streak.dayLinks(today))
+    }
+
+    @Test fun calendarSupportsLongBackfilledStreaksAcrossMonthBoundaries() {
+        val values = (0L..45L).associate { today.minusDays(it) to 2L }
+        val streak = DetailPresentation.calendarStreak(HabitHistory(count, values), today, DayOfWeek.MONDAY)
+        assertEquals(46, streak.periods.size)
+        assertEquals(today.minusDays(45), streak.periods.first().start)
+        assertEquals(today, streak.periods.last().start)
+    }
+
+    @Test fun calendarAvoidStreakExcludesOpenTodayAndDisappearsOnSlip() {
+        val avoid = count.copy(isNegative = true, dailyTarget = 0, createdOn = today.minusDays(3))
+        val history = HabitHistory(avoid, emptyMap())
+        val streak = DetailPresentation.calendarStreak(history, today, DayOfWeek.MONDAY)
+        assertEquals(3, streak.periods.size)
+        assertFalse(streak.contains(today))
+        assertTrue(DetailPresentation.calendarStreak(history.copy(values = mapOf(today to 1L)), today, DayOfWeek.MONDAY).periods.isEmpty())
+    }
+
+    @Test fun calendarWeeklyLinksUseSuccessfulWeeksNotIndividualDays() {
+        for (firstDay in listOf(DayOfWeek.MONDAY, DayOfWeek.SUNDAY)) {
+            val habit = count.copy(schedule = Schedule.timesPerWeek(3), createdOn = today.minusWeeks(8))
+            val current = HabitRules.weekStart(today, firstDay)
+            val history = HabitHistory(habit, mapOf(current.minusWeeks(2) to 3L, current.minusWeeks(1) to 3L, current to 1L))
+            val streak = DetailPresentation.calendarStreak(history, today, firstDay)
+            assertEquals(listOf(current.minusWeeks(2), current.minusWeeks(1)), streak.periods.map { it.start })
+            assertTrue(streak.connects(current.minusWeeks(2), current.minusWeeks(1)))
+            assertFalse(streak.connects(current.minusWeeks(1), current))
+            assertFalse(streak.contains(today))
+            val met = DetailPresentation.calendarStreak(history.copy(values = history.values + (current to 3L)), today, firstDay)
+            assertEquals(3, met.periods.size)
+            assertTrue(met.contains(today))
+        }
+    }
+
+    @Test fun calendarDoesNotInventMissingStepLinksOrCountPartialDays() {
+        val steps = HabitHistory(count.copy(type = HabitType.STEPS), mapOf(today.minusDays(1) to 2L))
+        val streak = DetailPresentation.calendarStreak(steps, today, DayOfWeek.MONDAY)
+        assertEquals(listOf(today.minusDays(1)), streak.periods.map { it.start })
+        val partial = HabitHistory(count, mapOf(today.minusDays(1) to 1L))
+        assertTrue(DetailPresentation.calendarStreak(partial, today, DayOfWeek.MONDAY).periods.isEmpty())
+    }
+
     @Test fun dailyChainIsSevenCalendarDaysNotSevenScheduledDays() {
         val h = count.copy(schedule = Schedule.weekdays(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY))
         val chain = DetailPresentation.recentChain(HabitHistory(h, emptyMap()), today, DayOfWeek.MONDAY)
@@ -83,9 +221,9 @@ class DetailPresentationTest {
         assertEquals(DayStatus.MET, met.status)
     }
 
-    @Test fun timerContextHasOnlyRemainingAndQuietPosition() {
-        assertEquals(TimerContext("25:00 left", "Session 1 of 2 · 25 min each"), DetailPresentation.timerContext(snapshot()))
-        assertEquals(TimerContext("14:32 remaining · paused", "Session 2 of 2 · 25 min each"),
+    @Test fun timerContextShowsRemainingAndConfiguredGoal() {
+        assertEquals(TimerContext("25:00 left", "2 sessions of 25 min every day"), DetailPresentation.timerContext(snapshot()))
+        assertEquals(TimerContext("14:32 remaining · paused", "2 sessions of 25 min every day"),
             DetailPresentation.timerContext(snapshot(value = 25 * 60, runs = listOf(
                 TimerSession(1, timed.id, now, null, SessionState.PAUSED, 1, 1500,
                     remainingMs = 872_000, epochDay = today.toEpochDay()),
@@ -99,13 +237,13 @@ class DetailPresentationTest {
         val run = TimerSession(1, timed.id, now.minusSeconds(8 * 60), null, SessionState.RUNNING, 1, 25 * 60, epochDay = today.toEpochDay())
         val context = DetailPresentation.timerContext(snapshot(timed.copy(dailyTarget = 10), value = 100 * 60, runs = listOf(run)))
         assertEquals("Today complete", context.primary)
-        assertEquals("Session 2 of 2 · 10 min each", context.secondary)
+        assertEquals("2 sessions of 10 min every day", context.secondary)
     }
 
     @Test fun singleSessionContextOmitsRedundantPositionAndEach() {
         val habit = timed.copy(sessions = 1, dailyTarget = 60)
-        assertEquals("1 session · 60 min", DetailPresentation.timerContext(snapshot(habit)).secondary)
-        assertEquals("1 session · 60 min", DetailPresentation.timerContext(snapshot(habit, value = 3600)).secondary)
+        assertEquals("1 session of 60 min every day", DetailPresentation.timerContext(snapshot(habit)).secondary)
+        assertEquals("1 session of 60 min every day", DetailPresentation.timerContext(snapshot(habit, value = 3600)).secondary)
     }
 
     @Test fun completedHistoryRemovesPausedSessionContext() {
@@ -148,7 +286,15 @@ class DetailPresentationTest {
         assertEquals("≤ 2 per day · every day", DetailPresentation.schedule(count.copy(isNegative = true)))
         assertEquals("2 steps · every day", DetailPresentation.schedule(count.copy(type = HabitType.STEPS)))
         assertEquals("3 times a week", DetailPresentation.schedule(count.copy(schedule = Schedule.timesPerWeek(3))))
-        assertEquals("", DetailPresentation.schedule(timed))
+        assertEquals("2 sessions of 25 min every day", DetailPresentation.schedule(timed))
+    }
+
+    @Test fun timerGoalIncludesSelectedWeekdaysOrDistinctDaysPerWeek() {
+        val weekdays = timed.copy(schedule = Schedule.weekdays(DayOfWeek.FRIDAY, DayOfWeek.MONDAY))
+        assertEquals("2 sessions of 25 min on Mon Fri", DetailPresentation.schedule(weekdays))
+        val weekly = timed.copy(schedule = Schedule.daysPerWeek(3))
+        assertEquals("2 sessions of 25 min per day, 3 days a week", DetailPresentation.schedule(weekly))
+        assertEquals(DetailPresentation.schedule(weekly), DetailPresentation.timerContext(snapshot(weekly)).secondary)
     }
 
     @Test fun daySheetLeadsWithCompletionProgressFromCreditedTime() {

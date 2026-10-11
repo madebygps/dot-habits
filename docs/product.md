@@ -8,11 +8,11 @@ Built for Nothing Phone (3) on Nothing OS 4.x / Android 16. Data stays on this p
 
 Home shows six habit tiles per page, up to 24 habits. Add a count, timer, steps or avoid habit; tap a tile for details. Use Android's back gesture or system back button to return. Tap the app icon for About, including the installed version, build details and repository link.
 
-Choose every day, selected weekdays, N distinct days/week or N times/week. The week starts Monday by default and can be changed in Settings. Timers use sessions times minutes, with session lengths from 1 to 300 minutes.
+Choose every day, selected weekdays, N distinct days/week or N times/week. The week starts Monday by default; choose Monday or Sunday in Settings. Timers use sessions times minutes, with session lengths from 1 to 300 minutes. In habit details, progress sits inside the tile beneath the icon: counts or weekly totals, slips, measured steps, or timer countdown and completed sessions. The text below the tile describes the goal and schedule; timers show the configured session count, minutes per session and scheduled days, not the current session number.
 
 ## Logging & progress
 
-Hold a count tile to log one completion, up to its target. Each count lights a border segment; reaching the goal makes the tile solid. Tap to open details.
+Hold a count tile to log one completion, up to its target. Each count lights a border segment; reaching the goal makes the tile solid. Tap to open details. The detail tile shows completion progress below its icon, with schedule information outside the tile.
 
 Hold an avoid tile to log a slip. Its dashed outline and slip count show the allowance, not a completed day. A day succeeds while slips stay at or below the allowance; exceeding it breaks the streak immediately.
 
@@ -24,7 +24,7 @@ Daily streaks count consecutive scheduled days. Rest days neither extend nor bre
 
 Weekly streaks count successful weeks and reset only when a week closes below its goal. The creation week is a grace week: it can count if met but never breaks the streak. N days/week counts distinct days; several logs on one day still count as one day. N times/week counts all completions.
 
-CURRENT is the current run; BEST is the longest run. D means days and WK means weeks. A small home-tile dot means the current streak is above zero, not a personal best. The recent chain shows seven calendar days or seven weeks, including the current period.
+CURRENT is the current run; BEST is the longest run. D means days and WK means weeks. A small home-tile flame means the current streak is above zero, not a personal best. It stays visible over empty, partially filled and solid tiles. The calendar links successful days in daily streaks, bridging rest days without counting them. For weekly habits, linked markers in the WK column show successful weeks. Past streak links are muted; current streak links are bright, with a flame on the latest successful day or week. Missed scheduled days and failed closed weeks break the links. Pending days and weeks do not earn a link.
 
 ## Timers & reboot
 
@@ -36,15 +36,15 @@ Steps come only from Health Connect's own phone counter. Other apps' totals are 
 
 ## History & statistics
 
-Expand Calendar and select today or a past date to open a day sheet with completion progress. Timer days show only completed sessions and Adjust completion, not time records. Goal met is filled, partial is outlined in the highlight colour, missed is dim outlined, pending is light outlined, and rest is neutral. The current period has a marker. Future dates cannot be edited; dates before tracking began remain unknown unless backfilled.
+The calendar is always visible. Select today or a past date to open a day sheet with completion progress. Timer days show only completed sessions and Adjust completion, not time records. Goal met is filled, partial is outlined in the foreground colour, missed is dim outlined, pending is light outlined, and rest is neutral. The current day has a marker. Browse earlier months to see the rest of a long streak. Future dates cannot be edited; dates before tracking began remain unknown unless backfilled.
 
 Edit the selected day's count or slips, or use Adjust completion to set its total completed timer sessions, including activity done without the timer. You can correct completions down as well as up. Meeting today's daily timer goal through a correction or a goal/duration edit discards any unfinished session without extra credit. Past-day corrections and edits that leave today below goal preserve the session's original duration and remaining time. Correcting today below goal enables a fresh timer, without restoring discarded partial time. Time records stay internal. History credit remains in seconds and is evaluated against the current session duration, so changing duration can change historical completion counts. Completed credit stays on its original date. Steps are read-only. Streaks and statistics recalculate from corrected history.
 
-Habit statistics is read-only. DAYS MET counts past scheduled days whose target was met. LAST 30D uses closed scheduled days in the last 30 days, or the last four finished weeks for weekly schedules. Today, the current week, rest days and the weekly creation grace period are excluded from this habit-level completion rate.
+Habit statistics is read-only and always visible. CURRENT and BEST streaks appear here alongside completion statistics. DAYS MET counts past scheduled days whose target was met. LAST 30D uses closed scheduled days in the last 30 days, or the last four finished weeks for weekly schedules. Today, the current week, rest days and the weekly creation grace period are excluded from this habit-level completion rate.
 
 ## Overall statistics
 
-Choose 30 days, 60 days, 90 days or All time. The selected range applies to the completion rate, comparison and trend.
+Choose 30 days, 60 days, 90 days or All time. The selected range applies to the completion rate, comparison and trend. Statistics values and labels use regular monospace lettering for consistent readability.
 
 Each past scheduled day is one goal. Each finished week is one goal for weekly habits, attributed to the week's first day. Rest days, today and the current week don't count. Unlike the habit-level LAST 30D rate, overall statistics includes closed creation weeks and backfilled history.
 
@@ -56,7 +56,7 @@ Bars group the selected range by week, or month for long ranges. Edge bars can c
 
 ## Widgets, Glyph Toys & live progress
 
-Choose Grid or Single Habit, each with Framed or Transparent styles, in the widget picker. Widgets are resizable and display-only; habit names remain available to TalkBack. The app's highlight colour applies to app and widget progress; Glyph output stays monochrome.
+Choose Grid or Single Habit, each with Framed or Transparent styles, in the widget picker. Widgets are resizable and display-only; habit names remain available to TalkBack. App and widget progress follow the system light or dark theme and stay monochrome, as does Glyph output.
 
 Widgets and the Habit Glyph Toy are display-only. Tap a widget to open the app. Enable either or both toys through Settings > Toys > Set up; choose the Habit toy's habit under Displayed habit. Selection survives app restarts; if that habit is deleted, choose another. The Timers toy controls timers only: long-press starts or pauses, and holding at least 2 seconds switches timers on release without also toggling. Short press is Nothing's system toy cycling. Neither toy logs completions directly.
 
@@ -66,7 +66,7 @@ Running sessions publish passive Live Update progress for Nothing's system Glyph
 
 Reminders notify you on scheduled days that are not done yet. Allow notifications in Settings; without exact-alarm permission, reminders and timer completion alerts may arrive late.
 
-Choose a highlight colour in Settings. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
+The app follows the system theme: white text on a black background in dark mode, black text on a white background in light mode, with monochrome progress and no colour customization. Dot lettering follows system font sizing, exposes its text to TalkBack, and falls back to regular text when characters are unsupported or the scaled dots would not fit.
 
 There is no Essential Space integration or Essential Key remapping.
 

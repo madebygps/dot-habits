@@ -4,6 +4,7 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import java.text.NumberFormat
 
 data class HistoryPoint(
     val start: LocalDate,
@@ -31,10 +32,93 @@ data class HistoryPoint(
 
 data class TimerContext(val primary: String, val secondary: String)
 
+data class HeroProgress(val primary: String, val label: String)
+
+data class CalendarStreak(val periods: List<HistoryPoint>) {
+    val latest: HistoryPoint? get() = periods.lastOrNull()
+    fun contains(date: LocalDate): Boolean = periods.any { date in it.start..it.end }
+
+    fun connects(from: LocalDate, to: LocalDate): Boolean {
+        val first = periods.indexOfFirst { date -> from in date.start..date.end }
+        val second = periods.indexOfFirst { date -> to in date.start..date.end }
+        return first >= 0 && second == first + 1
+    }
+
+    fun dayLinks(date: LocalDate): Pair<Boolean, Boolean> {
+        val previous = periods.any { it.start < date }
+        val next = periods.any { it.start > date }
+        val active = contains(date)
+        val bridge = !active && previous && next
+        return (bridge || (active && previous)) to (bridge || (active && next))
+    }
+}
+
 /** Presentation decisions shared with the app, with no clock or persistence side effects. */
 object DetailPresentation {
+    fun calendarStreaks(h: HabitHistory, today: LocalDate, firstDay: DayOfWeek): List<CalendarStreak> {
+        val earliest = minOf(h.habit.createdOn, h.values.filterValues { it > 0 }.keys.minOrNull() ?: h.habit.createdOn)
+        val runs = mutableListOf<CalendarStreak>()
+        val periods = mutableListOf<HistoryPoint>()
+        val weekly = h.habit.schedule.isWeekly
+        var date = if (weekly) HabitRules.weekStart(earliest, firstDay) else earliest
+        fun closeRun() {
+            if (periods.isNotEmpty()) runs += CalendarStreak(periods.toList())
+            periods.clear()
+        }
+        while (date <= today) {
+            val point = if (weekly) weekPoint(h, date, today, firstDay) else dayPoint(h, date, today)
+            when {
+                !weekly && !h.habit.schedule.isScheduledOn(date) -> Unit
+                point.status == DayStatus.MET -> periods += point
+                weekly && (point.current || date <= HabitRules.weekStart(h.habit.createdOn, firstDay)) -> Unit
+                !weekly && date < h.habit.createdOn && point.status == DayStatus.BEFORE_START -> Unit
+                !weekly && date == today && point.status != DayStatus.MISSED -> Unit
+                else -> closeRun()
+            }
+            date = if (weekly) date.plusWeeks(1) else date.plusDays(1)
+        }
+        closeRun()
+        return runs
+    }
+
+    fun heroProgress(t: HabitToday): HeroProgress {
+        val h = t.habit
+        if (h.type == HabitType.TIMED) {
+            val done = TimerMath.sessionsDone(t.value.coerceAtLeast(0), h.sessionSeconds, h.sessions)
+            return if (t.canControlTimer) {
+                HeroProgress(
+                    TimerMath.formatClock(t.tileSessionProgress?.remainingSeconds ?: t.sessionRemaining),
+                    "${if (t.timerPaused) "PAUSED" else "LEFT"} · $done/${h.sessions}",
+                )
+            } else HeroProgress("$done/${h.sessions}", if (t.status == TodayStatus.REST) "REST DAY" else "SESSIONS")
+        }
+        if (h.type == HabitType.STEPS) {
+            return if (t.hasData) HeroProgress(NumberFormat.getIntegerInstance().format(t.value), "STEPS")
+                else HeroProgress("--", "NO STEP DATA")
+        }
+        if (h.isNegative) return HeroProgress("${t.value}/${h.dailyTarget}", "SLIPS")
+        t.week?.let { return HeroProgress("${it.first}/${it.second}", "THIS WEEK") }
+        return HeroProgress("${t.value}/${h.dailyTarget}", if (t.status == TodayStatus.REST) "REST DAY" else "TODAY")
+    }
+
+    fun calendarStreak(h: HabitHistory, today: LocalDate, firstDay: DayOfWeek): CalendarStreak {
+        var remaining = HabitRules.streaks(h.habit, today, firstDay, h.values).current
+        val periods = mutableListOf<HistoryPoint>()
+        var date = today
+        while (remaining > 0) {
+            val point = if (h.habit.schedule.isWeekly) weekPoint(h, date, today, firstDay)
+                else dayPoint(h, date, today)
+            if (point.status == DayStatus.MET &&
+                (h.habit.schedule.isWeekly || h.habit.schedule.isScheduledOn(date))) {
+                periods += point
+                remaining--
+            }
+            date = if (h.habit.schedule.isWeekly) date.minusWeeks(1) else date.minusDays(1)
+        }
+        return CalendarStreak(periods.reversed())
+    }
+
     fun schedule(h: Habit): String {
-        if (h.type == HabitType.TIMED) return ""
         val target = when {
             h.type == HabitType.STEPS -> "${h.dailyTarget} steps"
             h.isNegative -> "≤ ${h.dailyTarget} per day"
@@ -48,13 +132,21 @@ object DetailPresentation {
             ScheduleKind.DAYS_PER_WEEK -> "${h.schedule.perWeek} different days a week"
             ScheduleKind.TIMES_PER_WEEK -> "${h.schedule.perWeek} times a week"
         }
+        if (h.type == HabitType.TIMED) {
+            val sessions = "${h.sessions} ${if (h.sessions == 1) "session" else "sessions"} of ${h.dailyTarget} min"
+            return when (h.schedule.kind) {
+                ScheduleKind.DAILY -> "$sessions every day"
+                ScheduleKind.WEEKDAYS -> "$sessions on $schedule"
+                ScheduleKind.DAYS_PER_WEEK -> "$sessions per day, ${h.schedule.perWeek} days a week"
+                ScheduleKind.TIMES_PER_WEEK -> "$sessions · $schedule"
+            }
+        }
         return if (h.schedule.kind == ScheduleKind.TIMES_PER_WEEK) schedule else "$target · $schedule"
     }
 
     fun timerContext(t: HabitToday): TimerContext {
         val h = t.habit
         val remaining = t.tileSessionProgress?.remainingSeconds ?: t.sessionRemaining
-        val done = TimerMath.sessionsDone(t.value.coerceAtLeast(0), h.sessionSeconds, h.sessions)
         val primary = when {
             t.timerRunning -> "${TimerMath.formatClock(remaining)} left"
             t.timerPaused -> "${TimerMath.formatClock(remaining)} remaining · paused"
@@ -64,8 +156,7 @@ object DetailPresentation {
         }
         return TimerContext(
             primary,
-            if (h.sessions == 1) "1 session · ${(t.tileSessionProgress?.totalSeconds ?: h.sessionSeconds) / 60} min"
-            else "Session ${(done + 1).coerceAtMost(h.sessions.coerceAtLeast(1))} of ${h.sessions} · ${(t.tileSessionProgress?.totalSeconds ?: h.sessionSeconds) / 60} min each",
+            schedule(h),
         )
     }
 

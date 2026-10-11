@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -16,7 +18,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.heading
@@ -43,24 +44,24 @@ data class DotColors(
     val dim: Color,
 )
 
-private val DarkDotColors = DotColors(
+internal val DarkDotColors = DotColors(
     background = Color(0xFF000000),
     surface = Color(0xFF0E0E0E),
     track = Color(0xFF262626),
     line = Color(0xFF1E1E1E),
-    text = Color(0xFFF2F2F2),
+    text = Color.White,
     muted = Color(0xFF8A8A8A),
     dim = Color(0xFF5C5C5C),
 )
 
-private val LightDotColors = DotColors(
-    background = Color(0xFFF4F4F2),
+internal val LightDotColors = DotColors(
+    background = Color.White,
     surface = Color(0xFFFFFFFF),
-    track = Color(0xFFD2D2CE),
-    line = Color(0xFFDDDDD9),
-    text = Color(0xFF111111),
-    muted = Color(0xFF666663),
-    dim = Color(0xFF94948F),
+    track = Color(0xFFD2D2D2),
+    line = Color(0xFFDDDDDD),
+    text = Color.Black,
+    muted = Color(0xFF666666),
+    dim = Color(0xFF949494),
 )
 
 val LocalDotColors = staticCompositionLocalOf { DarkDotColors }
@@ -82,48 +83,70 @@ object Palette {
         @Composable @ReadOnlyComposable get() = LocalDotColors.current.dim
 }
 
-val LocalHighlight = staticCompositionLocalOf { Color(0xFFE8343A) }
+val LocalHighlight = staticCompositionLocalOf { Color.White }
 
 private val Mono = FontFamily.Monospace
 
+internal fun dotColorScheme(dark: Boolean): ColorScheme {
+    val colors = if (dark) DarkDotColors else LightDotColors
+    return (if (dark) darkColorScheme() else lightColorScheme()).copy(
+        primary = colors.text,
+        onPrimary = colors.background,
+        primaryContainer = colors.track,
+        onPrimaryContainer = colors.text,
+        inversePrimary = colors.background,
+        secondary = colors.text,
+        onSecondary = colors.background,
+        secondaryContainer = colors.track,
+        onSecondaryContainer = colors.text,
+        tertiary = colors.text,
+        onTertiary = colors.background,
+        tertiaryContainer = colors.track,
+        onTertiaryContainer = colors.text,
+        background = colors.background,
+        onBackground = colors.text,
+        surface = colors.surface,
+        onSurface = colors.text,
+        surfaceVariant = colors.surface,
+        onSurfaceVariant = colors.muted,
+        surfaceTint = colors.text,
+        inverseSurface = colors.text,
+        inverseOnSurface = colors.background,
+        error = colors.text,
+        onError = colors.background,
+        errorContainer = colors.surface,
+        onErrorContainer = colors.text,
+        outline = colors.dim,
+        outlineVariant = colors.line,
+        scrim = Color.Black,
+        surfaceBright = if (dark) Color(0xFF3A3A3A) else Color.White,
+        surfaceDim = if (dark) Color.Black else Color(0xFFDDDDDD),
+        surfaceContainer = colors.surface,
+        surfaceContainerLow = colors.surface,
+        surfaceContainerLowest = colors.background,
+        surfaceContainerHigh = if (dark) Color(0xFF161616) else Color(0xFFEAEAEA),
+        surfaceContainerHighest = if (dark) Color(0xFF1C1C1C) else Color(0xFFE1E1E1),
+        primaryFixed = Color.White,
+        primaryFixedDim = Color(0xFFDDDDDD),
+        onPrimaryFixed = Color.Black,
+        onPrimaryFixedVariant = Color(0xFF333333),
+        secondaryFixed = Color.White,
+        secondaryFixedDim = Color(0xFFDDDDDD),
+        onSecondaryFixed = Color.Black,
+        onSecondaryFixedVariant = Color(0xFF333333),
+        tertiaryFixed = Color.White,
+        tertiaryFixedDim = Color(0xFFDDDDDD),
+        onTertiaryFixed = Color.Black,
+        onTertiaryFixedVariant = Color(0xFF333333),
+    )
+}
+
 @Composable
-fun DotTheme(highlight: Color, content: @Composable () -> Unit) {
+fun DotTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val colors = if (dark) DarkDotColors else LightDotColors
-    val displayHighlight = if (!dark && highlight.luminance() > 0.75f) Color(0xFF565652) else highlight
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = displayHighlight,
-            onPrimary = Color.Black,
-            background = colors.background,
-            onBackground = colors.text,
-            surface = colors.surface,
-            onSurface = colors.text,
-            surfaceVariant = colors.surface,
-            onSurfaceVariant = colors.muted,
-            surfaceContainer = colors.surface,
-            surfaceContainerHigh = Color(0xFF161616),
-            surfaceContainerHighest = Color(0xFF1C1C1C),
-            outline = colors.dim,
-            secondary = colors.text,
-        )
-    } else {
-        lightColorScheme(
-            primary = displayHighlight,
-            onPrimary = Color.Black,
-            background = colors.background,
-            onBackground = colors.text,
-            surface = colors.surface,
-            onSurface = colors.text,
-            surfaceVariant = colors.surface,
-            onSurfaceVariant = colors.muted,
-            surfaceContainer = colors.surface,
-            surfaceContainerHigh = Color(0xFFEAEAE7),
-            surfaceContainerHighest = Color(0xFFE1E1DD),
-            outline = colors.dim,
-            secondary = colors.text,
-        )
-    }
+    val displayHighlight = colors.text
+    val scheme = dotColorScheme(dark)
     val base = Typography()
     val typography = base.copy(
         labelSmall = TextStyle(fontFamily = Mono, fontSize = 11.sp, letterSpacing = 1.sp, color = colors.muted),
@@ -131,7 +154,11 @@ fun DotTheme(highlight: Color, content: @Composable () -> Unit) {
         labelLarge = TextStyle(fontFamily = Mono, fontSize = 14.sp, letterSpacing = 0.5.sp, fontWeight = FontWeight.Medium),
         titleMedium = base.titleMedium.copy(fontWeight = FontWeight.Medium),
     )
-    CompositionLocalProvider(LocalHighlight provides displayHighlight, LocalDotColors provides colors) {
+    CompositionLocalProvider(
+        LocalHighlight provides displayHighlight,
+        LocalDotColors provides colors,
+        LocalContentColor provides colors.text,
+    ) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)
     }
 }

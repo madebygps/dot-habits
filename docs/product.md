@@ -44,13 +44,19 @@ Habit statistics is read-only and always visible. CURRENT and BEST streaks appea
 
 ## Insights
 
-Insights shows patterns across your habits rather than repeating individual habit history. Choose 7, 30, 60 or 90 days. The range picker and centred overall summary stay above two tabs: Dashboard and Missed goals. The summary shows the date range above a prominent percentage, with goals met below. Dashboard opens by default; each tab shows only its own insight. The selected range applies to both tabs. Open ? for comparison dates, measured goal counts for each habit, and counting explanations.
+Rates compare with the equally long period just before your selected range.
+
+Green ↑ means improved, red ↓ means declined, and a neutral dash means unchanged after rounding. No arrow means no comparison data. -- means no measured goals.
+
+Today, unfinished weeks, rest days and missing step goals are excluded. Detailed rules are in Settings > How Dot Habits works.
+
+Insights shows patterns across your habits rather than repeating individual habit history. Choose 7, 30, 60 or 90 days. The range picker and centred overall summary stay above two tabs: Dashboard and Missed goals. The summary shows the date range above a prominent percentage, with goals met below. Dashboard opens by default; each tab shows only its own insight. The selected range applies to both tabs. Open ? for a short explanation of comparisons, markers and exclusions.
 
 Each past scheduled day is one goal. Each finished week is one goal for weekly habits, attributed to the week's first day. Rest days, today and the current week don't count. Unlike the habit-level LAST 30D rate, overall statistics includes closed creation weeks and backfilled history.
 
 Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero. A weekly step goal already met by measured steps counts even if some days are missing. The overall percentage stays neutral and has no streak flame.
 
-Dashboard shows every habit in home order in a two-column grid with shared dividers. Each cell has the habit icon, name and current completion rate. A green up arrow means improvement, a red down arrow means decline, and a neutral dash means the percentage-point change rounds to zero. Both periods must have measured goals for a comparison; otherwise the rate appears without a marker. -- means no measured goals, not 0%. Direction is also described to TalkBack. Comparisons use the equally long previous period; sample counts are in ? because small samples can produce large shifts. Edits to goals or schedules can change historical rates.
+Dashboard shows every habit in home order in a two-column grid with shared dividers. Each cell has the habit icon, name and current completion rate. Both periods must have measured goals for a comparison. Changes are rounded to whole percentage points; small samples can produce large shifts. Direction and measured counts are also described to TalkBack. Edits to goals or schedules can change historical rates.
 
 Where goals were missed lists habits by missed goal count and shows each habit's share of all measured misses. Missing step data is excluded. Daily habits offer more goals than weekly habits, so this is not a ranking of habit difficulty. The overall rate can also change when the mix of habits changes.
 

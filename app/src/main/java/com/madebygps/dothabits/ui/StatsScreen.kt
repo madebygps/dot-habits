@@ -130,7 +130,7 @@ fun StatsScreen(vm: MainViewModel) {
             }
         }
     }
-    if (showHelp) HelpDialog(stats) { showHelp = false }
+    if (showHelp) HelpDialog { showHelp = false }
 }
 
 private enum class InsightTab(val label: String) {
@@ -299,25 +299,13 @@ private fun MissedGoals(stats: RangeStats) {
 }
 
 @Composable
-private fun HelpDialog(stats: RangeStats, onDismiss: () -> Unit) {
+private fun HelpDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("How it's counted") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Selected: ${stats.from.format(shortDate)} – ${stats.to.format(shortDate)}")
-                Text("Compared with: ${stats.previousFrom.format(shortDate)} – ${stats.previousTo.format(shortDate)}")
-                val unmeasured = stats.habits.count { it.changePoints == null }
-                if (unmeasured > 0) {
-                    Text("$unmeasured ${if (unmeasured == 1) "habit doesn't" else "habits don't"} have measured goals in both date ranges to compare.")
-                }
-                Text("MEASURED GOALS", style = MaterialTheme.typography.labelMedium)
-                stats.habits.forEach { habit ->
-                    Text("${habit.habit.name}: ${habit.previous?.met}/${habit.previous?.total} before; " +
-                        "${habit.current.met}/${habit.current.total} now (${habit.current.percentage} met)",
-                        style = MaterialTheme.typography.bodySmall)
-                }
-                HabitGuide.statisticsHelp.paragraphs.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                HabitGuide.statisticsQuickHelp.forEach { Text(it, style = MaterialTheme.typography.bodyMedium) }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },

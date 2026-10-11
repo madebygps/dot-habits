@@ -30,6 +30,8 @@ class ProductGuideTest {
         assertTrue(HabitGuide.sections.contains(HabitGuide.privacy))
         val publishedParagraphs = HabitGuide.sections.flatMap { it.paragraphs }
         assertTrue(publishedParagraphs.containsAll(HabitGuide.toyHelp.paragraphs))
+        assertTrue(publishedParagraphs.containsAll(HabitGuide.statisticsQuickHelp))
+        assertEquals(3, HabitGuide.statisticsQuickHelp.size)
         HabitType.entries.forEach { type ->
             listOf(Schedule.Daily, Schedule.daysPerWeek(3)).forEach { schedule ->
                 val habit = Habit(name = "Example", icon = "dot", type = type, dailyTarget = 1,

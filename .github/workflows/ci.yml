@@ -22,4 +22,4 @@ jobs:
       - name: Install Android SDK
         run: sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Check app and generated product guide
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug

@@ -216,7 +216,7 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
                 )
             }
             Text(
-                stringResource(R.string.glyph_progress_help),
+                HabitGuide.glyphProgressSetup,
                 style = MaterialTheme.typography.bodySmall,
                 color = Palette.Muted,
             )
@@ -230,7 +230,7 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
             ) { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
             PermRow(
                 "Exact alarms",
-                if (canExact) "On time" else "May arrive up to 10 minutes late",
+                if (canExact) "On time" else "Reminders and timer alerts may arrive late",
                 if (canExact) null else "ALLOW",
             ) {
                 runCatching {
@@ -257,7 +257,7 @@ fun SettingsScreen(vm: MainViewModel, onGuide: () -> Unit) {
             TextButton(onClick = onGuide) { Text("How Dot Habits works") }
             BuildDetails()
             Text(
-                "Offline. No account, no tracking. Your data stays on this phone.",
+                HabitGuide.summary,
                 style = MaterialTheme.typography.bodySmall,
                 color = Palette.Muted,
             )
@@ -346,7 +346,7 @@ private fun StepsSection(
                 "Background refresh",
                 when {
                     !s.backgroundFeatureAvailable -> "Not supported. Updates when you open the app"
-                    s.backgroundGranted -> "On, about every 15 minutes"
+                    s.backgroundGranted -> HabitGuide.backgroundRefreshStatus
                     else -> "Off. Widgets and Glyph update when you open the app"
                 },
                 if (s.backgroundFeatureAvailable && !s.backgroundGranted) "ALLOW" else null,

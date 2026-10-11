@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.madebygps.dothabits.domain.HabitGuide
 import com.madebygps.dothabits.domain.RangeStats
 import com.madebygps.dothabits.domain.Stats
 import com.madebygps.dothabits.domain.StatsBucket
@@ -244,11 +245,9 @@ private fun HelpDialog(onDismiss: () -> Unit) {
         title = { Text("How it's counted") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("The selected range applies to the completion rate, comparison and trend.", style = MaterialTheme.typography.bodyMedium)
-                Text("Each past scheduled day is one goal. Each finished week is one goal for weekly habits. Rest days, today and the current week don't count.", style = MaterialTheme.typography.bodyMedium)
-                Text("Completion is goals met divided by measured goals. Missing step goals are excluded, never treated as zero.", style = MaterialTheme.typography.bodyMedium)
-                Text("The comparison chip shows percentage points, not relative percent change. For example, 88% now versus 77% before is +11 points. It compares with the equally long period just before. All time has no comparison. Changes in your mix of habits can affect the overall rate.", style = MaterialTheme.typography.bodyMedium)
-                Text("Bars group the selected range by week, or month for long ranges. Edge bars can cover only part of a week or month.", style = MaterialTheme.typography.bodyMedium)
+                HabitGuide.statisticsHelp.paragraphs.forEach {
+                    Text(it, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },

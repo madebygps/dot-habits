@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Optional exact reminders; Android 14+ denies by default, app falls back to a 10-minute window. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -141,6 +143,14 @@
         </activity>
 
         <!-- Timer Glyph Toy (Nothing Phone (3)); keep the component for existing toy selections. -->
+        <service
+            android:name=".system.TimerProgressService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started habit timer live progress on the notification and Nothing Glyph Progress, only while a visible running session exists; no wake lock." />
+        </service>
         <service
             android:name=".glyph.GlyphToyService"
             android:exported="true"

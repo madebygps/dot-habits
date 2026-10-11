@@ -2,6 +2,7 @@ package com.madebygps.dothabits.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,22 +17,29 @@ data class AppSettings(
     val weekStart: DayOfWeek = DayOfWeek.MONDAY,
     /** Habit shown by the display-only Habit Glyph Toy. */
     val glyphHabitId: Long? = null,
+    val liveProgressBatteryPromptShown: Boolean = false,
 )
 
 class SettingsStore(private val context: Context) {
     private object Keys {
         val weekStart = stringPreferencesKey("week_start")
         val glyphHabitId = longPreferencesKey("glyph_habit_id")
+        val liveProgressBatteryPromptShown = booleanPreferencesKey("live_progress_battery_prompt_shown")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { p ->
         AppSettings(
             weekStart = p[Keys.weekStart]?.let(DayOfWeek::valueOf) ?: DayOfWeek.MONDAY,
             glyphHabitId = p[Keys.glyphHabitId],
+            liveProgressBatteryPromptShown = p[Keys.liveProgressBatteryPromptShown] ?: false,
         )
     }
 
     suspend fun current(): AppSettings = settings.first()
+
+    suspend fun markLiveProgressBatteryPromptShown() = context.dataStore.edit {
+        it[Keys.liveProgressBatteryPromptShown] = true
+    }
 
     suspend fun setWeekStart(d: DayOfWeek) = context.dataStore.edit { it[Keys.weekStart] = d.name }
     suspend fun setGlyphHabit(id: Long?) = context.dataStore.edit {

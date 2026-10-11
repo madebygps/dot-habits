@@ -67,6 +67,7 @@ class ActionReceiver : BroadcastReceiver() {
                             r.timerSessionId?.let { id -> r.timerGeneration?.let { TimerDismissal.Run(id, it) } }
                         }
                         Notifications.dismissTimer(context, TimerDismissal.Run(runId, generation), current)
+                        TimerNotificationUpdater.refresh(context.dotApp)
                     } finally { pending.finish() }
                 }
             }

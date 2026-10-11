@@ -10,6 +10,12 @@
     <string name="timer_single">Session · %1$s</string>
     <string name="pause">Pause</string>
     <string name="glyph_progress_title">Live timer progress</string>
+    <string name="live_progress_battery_title">Background progress</string>
+    <string name="live_progress_battery_exempt">Unrestricted</string>
+    <string name="live_progress_battery_optimized">Battery optimized</string>
+    <string name="open_battery_settings">Open battery settings</string>
+    <string name="battery_settings_unavailable">Battery settings could not be opened. Find Dot Habits in Android Settings.</string>
+    <string name="not_now">Not now</string>
     <string name="glyph_progress_notifications_off">Notifications are off</string>
     <string name="glyph_progress_live_off">Live Updates are off</string>
     <string name="glyph_progress_live_on">Live Updates allowed</string>
